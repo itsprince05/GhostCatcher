@@ -4,10 +4,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Get these from https://my.telegram.org
-API_ID = os.getenv("API_ID", "YOUR_API_ID_HERE")
-API_HASH = os.getenv("API_HASH", "YOUR_API_HASH_HERE")
-BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+API_ID = os.getenv("API_ID", "38659771")
+API_HASH = os.getenv("API_HASH", "6178147a40a23ade99f8b3a45f00e436")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "7872058354:AAE0imE3CAViGWUySK7dnmzew7lw7Of-OOE")
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USERS_DIR = os.path.join(BASE_DIR, "users")
+
