@@ -19,8 +19,14 @@ class UserSession:
     async def get_dialogs(self, limit=10):
         if not self.client:
             return []
-        dialogs = await self.client.get_dialogs(limit=limit)
-        return dialogs
+        
+        users = []
+        async for dialog in self.client.iter_dialogs(limit=None):
+            if dialog.is_user and not dialog.entity.bot:
+                users.append(dialog)
+                if len(users) >= limit:
+                    break
+        return users
 
     async def scan_chat_and_download(self, chat_id, limit=100):
         if not self.client:
@@ -36,10 +42,23 @@ class UserSession:
             sender_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
             
             async for message in self.client.iter_messages(entity, limit=limit):
-                if message.ttl_seconds and message.media:
+                is_timer = False
+                # Check message main TTL
+                if getattr(message, 'ttl_seconds', None):
+                    is_timer = True
+                # Check media specific TTL (View Once often lives here)
+                elif message.media and getattr(message.media, 'ttl_seconds', None):
+                    is_timer = True
+
+                if is_timer and message.media:
                     total_media += 1
-                    path = await message.download_media(self.download_folder)
-                    media_paths.append(path)
+                    try:
+                        path = await message.download_media(self.download_folder)
+                        if path:
+                            media_paths.append(path)
+                    except Exception as e:
+                        print(f"Failed to download media msg {message.id}: {e}")
+
         except Exception as e:
             print(f"Error scanning chat {chat_id}: {e}")
             return [], "Error"
