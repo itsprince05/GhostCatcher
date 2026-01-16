@@ -1,8 +1,10 @@
 import asyncio
 import os
 import logging
+import sys
+import subprocess
 from telethon import TelegramClient, events, errors, Button
-from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR
+from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR, ADMIN_ID, LOG_GROUP_ID
 from user_handler import UserSession
 
 # Logging setup
@@ -114,6 +116,40 @@ async def logout_confirm(event):
 @bot.on(events.CallbackQuery(pattern=b"logout_no"))
 async def logout_cancel(event):
     await event.edit("Logout cancelled.")
+
+@bot.on(events.NewMessage(pattern='/update'))
+async def update_handler(event):
+    if event.sender_id != ADMIN_ID:
+        return
+    
+    if event.chat_id != LOG_GROUP_ID:
+        return
+
+    msg = await event.respond("Attempting to pull changes from git...")
+    
+    try:
+        process = subprocess.Popen(
+            ["git", "pull"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=os.getcwd()
+        )
+        stdout, stderr = process.communicate()
+        
+        output = stdout.decode('utf-8')
+        error = stderr.decode('utf-8')
+        
+        if "Already up to date." in output:
+             await msg.edit("Bot is already up to date!")
+             return
+
+        await msg.edit(f"**Update Successful!**\n\nOutput:\n`{output}`\n\nRestarting...")
+        
+        # Restart the script
+        os.execl(sys.executable, sys.executable, *sys.argv)
+        
+    except Exception as e:
+        await msg.edit(f"**Update Failed!**\nError: {e}")
 
 @bot.on(events.NewMessage(pattern='/fetch'))
 async def fetch_handler(event):
