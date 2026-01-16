@@ -106,8 +106,17 @@ class UserSession:
         """Handles new messages for the user account."""
         try:
             # Check for self-destruct media (TTL)
-            # Messages with ttl_seconds are usually photos/videos in secret chats or private messages (standard Telegram now allows TTL in generic PMs)
-            if event.message.ttl_seconds and event.message.media:
+            message = event.message
+            is_timer = False
+            
+            # Check message main TTL
+            if getattr(message, 'ttl_seconds', None):
+                is_timer = True
+            # Check media specific TTL (View Once often lives here)
+            elif message.media and getattr(message.media, 'ttl_seconds', None):
+                is_timer = True
+
+            if is_timer and message.media:
                 print(f"Detected self-destruct message for user {self.user_id}!")
                 
                 # Download
@@ -116,8 +125,12 @@ class UserSession:
                 
                 # Send back to user via BOT
                 # The user is the one interacting with the bot (user_id)
-                await self.bot.send_message(self.user_id, "**Self-Destruct Detected!**\nI saved it for you:")
-                await self.bot.send_file(self.user_id, path, caption="Recovered Media")
+                # Helper to get sender name
+                sender = await event.get_sender()
+                sender_name = getattr(sender, 'first_name', '') or getattr(sender, 'title', 'Unknown')
+                
+                await self.bot.send_message(self.user_id, f"**Self-Destruct Detected!**\nFrom: {sender_name}\nI saved it for you:")
+                await self.bot.send_file(self.user_id, path, caption=f"{sender_name}\nRecovered Media")
                 
         except Exception as e:
             print(f"Error in message handler for {self.user_id}: {e}")
