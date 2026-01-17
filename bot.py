@@ -57,6 +57,35 @@ async def ensure_logged_in(user_id):
         return True
     return False
 
+@bot.on(events.NewMessage(pattern='/id'))
+async def id_handler(event):
+    """Handles /id command."""
+    if event.is_private:
+        sender = await event.get_sender()
+        name = getattr(sender, 'first_name', 'User') or 'User'
+        # Use username if available for "Hey username", else Name
+        uname = getattr(sender, 'username', None)
+        display_name = uname if uname else name
+        await event.respond(f"Hey {display_name}\nyou ID is {sender.id}")
+    else:
+        chat = await event.get_chat()
+        sender = await event.get_sender()
+        
+        is_super = getattr(chat, 'megagroup', False)
+        status_text = "SuperGroup" if is_super else "Group"
+        
+        s_name = getattr(sender, 'first_name', '') or getattr(sender, 'title', 'Unknown')
+        g_name = getattr(chat, 'title', 'Unknown')
+        
+        text = (
+            f"Group status {status_text}\n"
+            f"{s_name}\n"
+            f"{sender.id}\n\n"
+            f"{g_name}\n"
+            f"{chat.id}"
+        )
+        await event.respond(text)
+
 @bot.on(events.NewMessage(pattern='/login'))
 async def login_command(event):
     sender = await event.get_sender()
