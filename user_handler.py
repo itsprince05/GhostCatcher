@@ -158,16 +158,19 @@ class UserSession:
                 return
             
             # 3. Filter: Real Users Only (No Bots)
-            # Fetch chat entity to check if it is a bot
             try:
-                chat_entity = await event.get_chat()
-                if getattr(chat_entity, 'bot', False):
+                # Check if the sender is a bot
+                sender = await event.get_sender()
+                if getattr(sender, 'bot', False):
                     return
-                # Also check sender if different (rare in private, but safe)
-                if getattr(event.sender, 'bot', False):
-                    return
+                # Check if the partner (chat) is a bot (for outgoing messages to a bot)
+                if event.out:
+                     # For outgoing, 'sender' is Me. We need to check who we are talking to.
+                     chat = await event.get_chat()
+                     if getattr(chat, 'bot', False):
+                         return
             except:
-                pass # Proceed if check fails (user might be deleted/unknown)
+                pass
 
             # Check for self-destruct media (TTL)
             message = event.message
