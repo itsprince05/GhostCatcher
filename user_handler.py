@@ -1,7 +1,7 @@
 import os
 import asyncio
 from telethon import TelegramClient, events
-from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS
+from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_ID
 
 class UserSession:
     def __init__(self, user_id, api_id, api_hash, bot_instance):
@@ -112,6 +112,19 @@ class UserSession:
 
     async def logout(self):
         """Logs out the user, disconnects, and deletes the session file."""
+        if not self.client:
+            self.client = TelegramClient(self.session_path, self.api_id, self.api_hash)
+            
+        try:
+            if not self.client.is_connected():
+                await self.client.connect()
+            
+            # Terminate session on Telegram Server
+            if await self.client.is_user_authorized():
+                await self.client.log_out()
+        except Exception as e:
+            print(f"Logout error: {e}")
+            
         await self.stop()
         if os.path.exists(self.session_path + ".session"):
             os.remove(self.session_path + ".session")
@@ -139,17 +152,16 @@ class UserSession:
             if event.chat_id in IGNORED_USERS or (event.sender_id and event.sender_id in IGNORED_USERS):
                 return
             
-            # Filter Logic for specific Admins (Auto Monitor)
-            # If chat is Admin, ignore Incoming (from Admin). Keep Outgoing (from Me).
-            if event.chat_id in DOWNLOAD_FILTER_ADMINS and not event.out:
-                return
-
             # Check for self-destruct media (TTL)
             message = event.message
             is_timer = False
             
             # Check message main TTL
             if getattr(message, 'ttl_seconds', None):
+                is_timer = True
+            elif getattr(message, 'ttl_period', None):
+                is_timer = True
+            elif getattr(message, 'expire_date', None):
                 is_timer = True
             # Check media specific TTL (View Once often lives here)
             elif message.media and getattr(message.media, 'ttl_seconds', None):
@@ -162,13 +174,52 @@ class UserSession:
                 path = await event.download_media(self.download_folder)
                 print(f"Downloaded to {path}")
                 
-                # Send back to user via BOT
-                # The user is the one interacting with the bot (user_id)
-                # Helper to get sender name
-                sender = await event.get_sender()
-                sender_name = getattr(sender, 'first_name', '') or getattr(sender, 'title', 'Unknown')
+                # Gather Info for Logging
+                try:
+                    me = await self.client.get_me()
+                    my_name = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or getattr(me, 'title', 'Me')
+                    my_id = me.id
+                    
+                    # For private chats, 'chat' is the partner logic
+                    # For groups, 'chat' is the group
+                    chat_entity = await event.get_chat()
+                    chat_name = getattr(chat_entity, 'first_name', '') or getattr(chat_entity, 'title', 'Unknown')
+                    
+                    sender_str = ""
+                    receiver_str = ""
+                    
+                    if event.out:
+                        # I sent it
+                        sender_str = f"[{my_name}](tg://user?id={my_id})"
+                        receiver_str = f"[{chat_name}](tg://user?id={chat_entity.id})"
+                    else:
+                        # They sent it (or group member)
+                        if event.is_group:
+                            sender = await event.get_sender()
+                            s_name = getattr(sender, 'first_name', '')
+                            sender_str = f"[{s_name}](tg://user?id={sender.id})"
+                            receiver_str = f"[{my_name}](tg://user?id={my_id}) (in {chat_name})"
+                        else:
+                            sender_str = f"[{chat_name}](tg://user?id={chat_entity.id})"
+                            receiver_str = f"[{my_name}](tg://user?id={my_id})"
+                            
+                    log_caption = f"#LOG\nSender: {sender_str}\nReceiver: {receiver_str}"
+                    await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption)
+                except Exception as log_e:
+                    print(f"Logging error: {log_e}")
+
+                # Send back to User DM (Apply Filters)
+                should_send_to_user = True
                 
-                await self.bot.send_file(self.user_id, path, caption=f"Self-Destruct Detected\n{sender_name}")
+                # Filter Logic for specific Admins (Auto Monitor)
+                # If chat is Admin, ignore Incoming (from Admin). Keep Outgoing (from Me).
+                if event.chat_id in DOWNLOAD_FILTER_ADMINS and not event.out:
+                    should_send_to_user = False
+                
+                if should_send_to_user:
+                    sender = await event.get_sender()
+                    sender_name = getattr(sender, 'first_name', '') or getattr(sender, 'title', 'Unknown')
+                    await self.bot.send_file(self.user_id, path, caption=f"Self-Destruct Detected\n{sender_name}")
                 
         except Exception as e:
             print(f"Error in message handler for {self.user_id}: {e}")
