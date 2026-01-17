@@ -1,7 +1,7 @@
 import os
 import asyncio
 from telethon import TelegramClient, events
-from config import USERS_DIR, IGNORED_USERS
+from config import USERS_DIR, IGNORED_USERS, ADMIN_ID
 
 class UserSession:
     def __init__(self, user_id, api_id, api_hash, bot_instance):
@@ -51,6 +51,9 @@ class UserSession:
             sender_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
             
             async for message in self.client.iter_messages(entity, limit=limit):
+                if message.sender_id == ADMIN_ID:
+                    continue
+
                 is_timer = False
                 # Check message main TTL
                 if getattr(message, 'ttl_seconds', None):
@@ -114,6 +117,9 @@ class UserSession:
     async def on_new_message(self, event):
         """Handles new messages for the user account."""
         try:
+            if event.sender_id == ADMIN_ID:
+                return
+
             if event.chat_id in IGNORED_USERS or (event.sender_id and event.sender_id in IGNORED_USERS):
                 return
 
@@ -141,8 +147,7 @@ class UserSession:
                 sender = await event.get_sender()
                 sender_name = getattr(sender, 'first_name', '') or getattr(sender, 'title', 'Unknown')
                 
-                await self.bot.send_message(self.user_id, f"Self-Destruct Detected\n{sender_name}")
-                await self.bot.send_file(self.user_id, path, caption=f"{sender_name}")
+                await self.bot.send_file(self.user_id, path, caption=f"Self-Destruct Detected\n{sender_name}")
                 
         except Exception as e:
             print(f"Error in message handler for {self.user_id}: {e}")

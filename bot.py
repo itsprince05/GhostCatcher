@@ -174,6 +174,10 @@ async def update_handler(event):
 
         await msg.edit(f"Update Successful\n\nOutput:\n{output}\n\nRestarting...")
         
+        # Disconnect all sessions to avoid locks
+        for session in active_sessions.values():
+            await session.stop()
+        
         # Restart the script
         os.execl(sys.executable, sys.executable, *sys.argv)
         
