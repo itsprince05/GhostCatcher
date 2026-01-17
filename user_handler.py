@@ -264,24 +264,18 @@ class UserSession:
 
                     if event.out:
                         # I sent it
-                        sender_str = f"{my_id}\n{get_mention(me, my_name)}"
-                        receiver_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
+                        display_name = my_name
                     else:
                         # They sent it
                         if event.is_group:
                             sender = await event.get_sender()
                             s_first = getattr(sender, 'first_name', '') or ''
-                            s_name = s_first.strip() or "Unknown"
-                            
-                            sender_str = f"{sender.id}\n{get_mention(sender, s_name)}"
+                            s_last = getattr(sender, 'last_name', '') or ''
+                            display_name = f"{s_first} {s_last}".strip() or "Unknown"
                         else:
-                            sender_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
-                        
-                        receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
+                            display_name = chat_name
                     
-                        receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
-                    
-                    footer = f"Sender - {sender_str}\n\nReceiver - {receiver_str}"
+                    footer = esc(display_name)
                     
                     original_caption = event.message.message or ""
                     if original_caption:
