@@ -14,5 +14,8 @@ LOG_GROUP_ID = int(os.getenv("LOG_GROUP_ID", "-1003609401157"))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USERS_DIR = os.path.join(BASE_DIR, "users")
 
-# ID to ignore
-IGNORED_USERS = [111111111, 22222222, 333333, 444444]
+# ID to ignore completely (Blacklist) - Empty for now
+IGNORED_USERS = []
+
+# IDs to Filter (Only download Outgoing/Sent-by-User messages from these chats)
+DOWNLOAD_FILTER_ADMINS = [8273064582, 111111111, 22222222, 333333, 444444]
