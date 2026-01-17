@@ -342,7 +342,6 @@ async def message_handler(event):
                 state_data['state'] = '2FA'
                 await event.respond("Two-Step Verification Required\nPlease enter your 2FA Password")
             except Exception as e:
-            except Exception as e:
                 await event.respond("Incorrect OTP\nTry again")
 
         elif state == '2FA':
