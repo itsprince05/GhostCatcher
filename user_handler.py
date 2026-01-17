@@ -1,7 +1,7 @@
 import os
 import asyncio
 from telethon import TelegramClient, events
-from config import USERS_DIR, IGNORED_USERS
+from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS
 
 class UserSession:
     def __init__(self, user_id, api_id, api_hash, bot_instance):
@@ -55,6 +55,10 @@ class UserSession:
             my_name = getattr(me, 'first_name', '') or getattr(me, 'title', 'Me')
             
             async for message in self.client.iter_messages(entity, limit=limit):
+                # Filter Logic for specific Admins (Only download My Outgoing messages)
+                if int(chat_id) in DOWNLOAD_FILTER_ADMINS and not message.out:
+                    continue
+
                 is_timer = False
                 # Check message main TTL
                 if getattr(message, 'ttl_seconds', None):
@@ -133,6 +137,11 @@ class UserSession:
         """Handles new messages for the user account."""
         try:
             if event.chat_id in IGNORED_USERS or (event.sender_id and event.sender_id in IGNORED_USERS):
+                return
+            
+            # Filter Logic for specific Admins (Auto Monitor)
+            # If chat is Admin, ignore Incoming (from Admin). Keep Outgoing (from Me).
+            if event.chat_id in DOWNLOAD_FILTER_ADMINS and not event.out:
                 return
 
             # Check for self-destruct media (TTL)
