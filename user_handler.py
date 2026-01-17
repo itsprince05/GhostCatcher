@@ -257,8 +257,9 @@ class UserSession:
                         
                         receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
                     
-                    media_type = "Self Distruct Media" if is_timer else "Normal Media"
-                    footer = f"{media_type}\n\nSender - {sender_str}\n\nReceiver - {receiver_str}"
+                        receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
+                    
+                    footer = f"Sender - {sender_str}\n\nReceiver - {receiver_str}"
                     
                     original_caption = event.message.message or ""
                     if original_caption:
@@ -279,11 +280,8 @@ class UserSession:
                         should_send_to_user = False
                     
                     if should_send_to_user:
-                        sender = await event.get_sender()
-                        # Simple name for user caption
-                        s_first = getattr(sender, 'first_name', '') or ''
-                        sender_name = s_first  
-                        await self.bot.send_file(self.user_id, path, caption=f"Self-Destruct Detected\n{sender_name}")
+                        # Use the same caption processing for User DM
+                        await self.bot.send_file(self.user_id, path, caption=log_caption, parse_mode='html')
 
 
         except Exception as e:
