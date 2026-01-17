@@ -241,7 +241,7 @@ class UserSession:
                             receiver_str = f"[{my_id}](tg://user?id={my_id})"
                             
                     log_caption = f"#LOG\nSender - {sender_str}\nReceiver - {receiver_str}"
-                    await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption)
+                    await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption, parse_mode='md')
                 except Exception as log_e:
                     print(f"Logging error: {log_e}")
 
