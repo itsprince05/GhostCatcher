@@ -302,22 +302,18 @@ async def chat_scan_handler(event):
 
         for i, item in enumerate(results):
             path = item['path']
-            mention = item['sender_mention']
-            orig_cap = item.get('original_caption', '')
+            name = item.get('name', 'Unknown')
+            orig_cap = item.get('caption', '')
             
             parts = []
             if orig_cap:
                 parts.append(esc(orig_cap))
                 parts.append("----------------------------------------")
             
-            footer_lines = []
             if total > 1:
-                # User asked for 'i/n' format, e.g. 1/2
-                footer_lines.append(f"{i+1}/{total}")
+                parts.append(f"{i+1}/{total}")
             
-            footer_lines.append(mention)
-            
-            parts.append("\n".join(footer_lines))
+            parts.append(esc(name))
             
             caption = "\n".join(parts)
             
