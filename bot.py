@@ -294,15 +294,13 @@ async def chat_scan_handler(event):
         total = len(results)
         for i, item in enumerate(results):
             path = item['path']
-            name = item['sender_name']
+            # Use Rich Caption
+            caption = item.get('caption', '')
             
-            caption = ""
-            if total == 1:
-                caption = f"{name}"
-            else:
-                caption = f"{i+1}/{total}\n{name}"
+            if total > 1:
+                caption = f"[{i+1}/{total}]\n{caption}"
             
-            await bot.send_file(user_id, path, caption=caption)
+            await bot.send_file(user_id, path, caption=caption, parse_mode='html')
         
         await bot.send_message(user_id, "Done")
             
