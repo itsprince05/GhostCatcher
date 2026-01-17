@@ -101,26 +101,24 @@ class UserSession:
                             s_lname = getattr(sender_obj, 'last_name', '') or ''
                             s_full = f"{s_fname} {s_lname}".strip()
                             
-                            if message.out:
-                                sender_str = f"{me.id}\n{get_mention(me, my_name)}"
-                                receiver_str = f"{entity.id}\n{get_mention(entity, other_name)}"
-                            else:
-                                if message.is_group:
-                                    sender_str = f"{sender_obj.id}\n{get_mention(sender_obj, s_full)}"
-                                    receiver_str = f"{me.id}\n{get_mention(me, my_name)}"
-                                else:
-                                    sender_str = f"{sender_obj.id}\n{get_mention(sender_obj, s_full)}"
-                                    receiver_str = f"{me.id}\n{get_mention(me, my_name)}"
+                            # Plain Text Name for simplified footer (escaped for HTML safety)
+                            sender_mention = esc(s_full)
 
-                            footer = f"Sender - {sender_str}\n\nReceiver - {receiver_str}"
-                            
                             orig_cap = message.message or ""
-                            if orig_cap:
-                                final_cap = f"{esc(orig_cap)}\n----------------------------------------\n{footer}"
-                            else:
-                                final_cap = footer
+                            
+                            results.append({
+                                'path': path, 
+                                'sender_mention': sender_mention,
+                                'original_caption': orig_cap
+                            })
+                    except Exception as e:
+                        print(f"Failed to download media msg {message.id}: {e}")
 
-                            results.append({'path': path, 'caption': final_cap})
+        except Exception as e:
+            print(f"Error scanning chat {chat_id}: {e}")
+            return [], "Error"
+        
+        return results
                     except Exception as e:
                         print(f"Failed to download media msg {message.id}: {e}")
 
