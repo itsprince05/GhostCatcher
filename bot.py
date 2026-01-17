@@ -33,8 +33,22 @@ async def start_handler(event):
     
     # Check if session exists and is loaded
     if user_id in active_sessions:
-        username = sender.first_name if sender else "User"
-        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
+        try:
+             # Verify connectivity/auth
+             await active_sessions[user_id].client.get_me()
+             username = sender.first_name if sender else "User"
+             await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
+        except Exception:
+             # Session invalid/disconnected
+             if user_id in active_sessions:
+                 del active_sessions[user_id]
+             
+             # Clean up file
+             session_path = os.path.join(user_folder, "session")
+             if os.path.exists(session_path + ".session"):
+                 os.remove(session_path + ".session")
+
+             await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
         return
 
     # Check if session file exists on disk
@@ -182,7 +196,22 @@ async def fetch_handler(event):
             await msg.edit(f"Current users list\n\n{response_text}")
         
     except Exception as e:
-        await msg.edit(f"Error fetching chats: {e}")
+        # Check for disconnection or auth errors
+        err_str = str(e).lower()
+        if "auth" in err_str or "disconnect" in err_str or "session" in err_str:
+             if user_id in active_sessions:
+                 del active_sessions[user_id]
+             user_folder = os.path.join(USERS_DIR, str(user_id))
+             session_path = os.path.join(user_folder, "session.session")
+             if os.path.exists(session_path):
+                 os.remove(session_path)
+
+             await msg.delete() # Remove "Fetching..."
+             await event.respond(f"Your session is expired and account is disconnected, reconnect your account again and start catching self distruct (timer) media")
+             await event.respond("Please send your Phone Number (with country code)\ne.g., +919876543210")
+             login_states[user_id] = {'state': 'PHONE'}
+        else:
+             await msg.edit(f"Error fetching chats: {e}")
 
 @bot.on(events.NewMessage(pattern=r'/(\d+)'))
 async def chat_scan_handler(event):
@@ -221,7 +250,20 @@ async def chat_scan_handler(event):
         await bot.send_message(user_id, "Done")
             
     except Exception as e:
-        await event.respond(f"Error scanning: {e}")
+        err_str = str(e).lower()
+        if "auth" in err_str or "disconnect" in err_str or "session" in err_str:
+             if user_id in active_sessions:
+                 del active_sessions[user_id]
+             user_folder = os.path.join(USERS_DIR, str(user_id))
+             session_path = os.path.join(user_folder, "session.session")
+             if os.path.exists(session_path):
+                 os.remove(session_path)
+             
+             await event.respond(f"Your session is expired and account is disconnected, reconnect your account again and start catching self distruct (timer) media")
+             await event.respond("Please send your Phone Number (with country code)\ne.g., +919876543210")
+             login_states[user_id] = {'state': 'PHONE'}
+        else:
+             await event.respond(f"Error scanning: {e}")
 
 @bot.on(events.NewMessage)
 async def message_handler(event):
@@ -266,7 +308,7 @@ async def message_handler(event):
                     await event.respond(f"Please wait and try again after {e.seconds} seconds")
                     del login_states[user_id]
                 except Exception as e:
-                    await event.respond(f"Error: {str(e)}")
+                    await event.respond("Incorrect OTP\nTry again")
                     # checking if client needs disconnect?
                     await temp_client.disconnect()
             else:
@@ -300,7 +342,8 @@ async def message_handler(event):
                 state_data['state'] = '2FA'
                 await event.respond("Two-Step Verification Required\nPlease enter your 2FA Password")
             except Exception as e:
-                await event.respond(f"Login failed try again")
+            except Exception as e:
+                await event.respond("Incorrect OTP\nTry again")
 
         elif state == '2FA':
             password = text
@@ -308,7 +351,7 @@ async def message_handler(event):
             
             try:
                 await client.sign_in(password=password)
-                await event.respond("**Login Successful!**\nSession saved. Monitoring started.")
+                await event.respond(f"Login Successful\n\nNow your account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
                 await client.disconnect()
                 
                 user_session = UserSession(user_id, API_ID, API_HASH, bot)
@@ -316,7 +359,7 @@ async def message_handler(event):
                 active_sessions[user_id] = user_session
                 del login_states[user_id]
             except Exception as e:
-                await event.respond(f"Password failed: {str(e)}")
+                await event.respond("Incorrect password\nTry again")
 
     except Exception as e:
         logger.error(f"Error in handler: {e}")
