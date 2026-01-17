@@ -241,19 +241,22 @@ async def chat_scan_handler(event):
     await event.respond(f"Scanning user {target_id}")
     
     try:
-        media_paths, sender_name = await active_sessions[user_id].scan_chat_and_download(target_id, limit=100)
+        results = await active_sessions[user_id].scan_chat_and_download(target_id, limit=100)
         
-        if not media_paths:
+        if not results:
             await event.respond(f"No media found")
             return
             
-        total = len(media_paths)
-        for i, path in enumerate(media_paths):
+        total = len(results)
+        for i, item in enumerate(results):
+            path = item['path']
+            name = item['sender_name']
+            
             caption = ""
             if total == 1:
-                caption = f"{sender_name}"
+                caption = f"{name}"
             else:
-                caption = f"{i+1}/{total}\n{sender_name}"
+                caption = f"{i+1}/{total}\n{name}"
             
             await bot.send_file(user_id, path, caption=caption)
         
