@@ -24,6 +24,7 @@ bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 @bot.on(events.NewMessage(pattern='/start'))
 async def start_handler(event):
     sender = await event.get_sender()
+    if not sender: return
     user_id = sender.id
     
     logger.info(f"User {user_id} started the bot.")
@@ -32,41 +33,29 @@ async def start_handler(event):
     os.makedirs(user_folder, exist_ok=True)
     
     # Check if session exists and is loaded
-    if user_id in active_sessions:
-        try:
-             # Verify connectivity/auth
-             await active_sessions[user_id].client.get_me()
-             username = sender.first_name if sender else "User"
-             await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
-        except Exception:
-             # Session invalid/disconnected
-             if user_id in active_sessions:
-                 del active_sessions[user_id]
-             
-             # Clean up file
-             session_path = os.path.join(user_folder, "session")
-             if os.path.exists(session_path + ".session"):
-                 os.remove(session_path + ".session")
-
-             await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
-        return
-
-    # Check if session file exists on disk
-    session_path = os.path.join(user_folder, "session")
-    
-    # We create a UserSession wrapper to check validity
-    user_session = UserSession(user_id, API_ID, API_HASH, bot)
-    
-    if await user_session.is_authorized():
-        # Valid session found on disk
-        await user_session.start()
-        active_sessions[user_id] = user_session
+    if await ensure_logged_in(user_id):
+        # Already logged in or just loaded
         username = sender.first_name if sender else "User"
         await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
-    else:
-        # No valid session
-        username = sender.first_name if sender else "User"
-        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
+        return
+
+    # No valid session
+    username = sender.first_name if sender else "User"
+    await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
+
+async def ensure_logged_in(user_id):
+    """Ensures the user session is loaded if it exists on disk."""
+    if user_id in active_sessions:
+        return True
+    
+    # Check disk
+    user_session = UserSession(user_id, API_ID, API_HASH, bot)
+    if await user_session.is_authorized():
+        # Valid session found on disk, load it
+        await user_session.start()
+        active_sessions[user_id] = user_session
+        return True
+    return False
 
 @bot.on(events.NewMessage(pattern='/login'))
 async def login_command(event):
@@ -187,7 +176,7 @@ async def update_handler(event):
 @bot.on(events.NewMessage(pattern='/fetch'))
 async def fetch_handler(event):
     user_id = event.sender_id
-    if user_id not in active_sessions:
+    if not await ensure_logged_in(user_id):
         await event.respond("Your account is not connected\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
         return
     
@@ -237,16 +226,7 @@ async def chat_scan_handler(event):
     user_id = event.sender_id
     
     # Check connection
-    is_connected = False
-    if user_id in active_sessions:
-        is_connected = True
-    else:
-        user_folder = os.path.join(USERS_DIR, str(user_id))
-        session_path = os.path.join(user_folder, "session.session")
-        if os.path.exists(session_path):
-            is_connected = True
-
-    if not is_connected:
+    if not await ensure_logged_in(user_id):
         await event.respond("Your account is not connected\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
         return
         
