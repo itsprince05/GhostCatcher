@@ -466,7 +466,15 @@ async def check_restart_msg():
         except Exception as e:
             print(f"Error sending restart msg: {e}")
 
+import traceback
+
 print("Bot is running...")
 bot.loop.create_task(restore_sessions())
 bot.loop.create_task(check_restart_msg())
-bot.run_until_disconnected()
+
+try:
+    bot.run_until_disconnected()
+except Exception:
+    with open("crash.txt", "w") as f:
+        f.write(traceback.format_exc())
+    print("Bot Crashed! Check crash.txt")
