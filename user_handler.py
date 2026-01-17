@@ -226,10 +226,14 @@ class UserSession:
                     sender_str = ""
                     receiver_str = ""
                     
+                    # Helper to escape HTML
+                    def esc(text):
+                        return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
                     if event.out:
                         # I sent it
-                        sender_str = f"{my_id}\n[{my_name}](tg://user?id={my_id})"
-                        receiver_str = f"{chat_entity.id}\n[{chat_name}](tg://user?id={chat_entity.id})"
+                        sender_str = f"{my_id}\n<a href='tg://user?id={my_id}'>{esc(my_name)}</a>"
+                        receiver_str = f"{chat_entity.id}\n<a href='tg://user?id={chat_entity.id}'>{esc(chat_name)}</a>"
                     else:
                         # They sent it
                         if event.is_group:
@@ -237,14 +241,15 @@ class UserSession:
                             s_first = getattr(sender, 'first_name', '') or ''
                             s_name = s_first.strip() or "Unknown"
                             
-                            sender_str = f"{sender.id}\n[{s_name}](tg://user?id={sender.id})"
+                            sender_str = f"{sender.id}\n<a href='tg://user?id={sender.id}'>{esc(s_name)}</a>"
                         else:
-                            sender_str = f"{chat_entity.id}\n[{chat_name}](tg://user?id={chat_entity.id})"
+                            sender_str = f"{chat_entity.id}\n<a href='tg://user?id={chat_entity.id}'>{esc(chat_name)}</a>"
                         
-                        receiver_str = f"{my_id}\n[{my_name}](tg://user?id={my_id})"
-                            
-                    log_caption = f"#LOG\n\nSender - {sender_str}\n\nReceiver - {receiver_str}"
-                    await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption, parse_mode='md')
+                        receiver_str = f"{my_id}\n<a href='tg://user?id={my_id}'>{esc(my_name)}</a>"
+                    
+                    sep = "---------------------------------------"
+                    log_caption = f"{sep}\nSender - {sender_str}\n\nReceiver - {receiver_str}\n{sep}"
+                    await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption, parse_mode='html')
                 except Exception as log_e:
                     print(f"Logging error: {log_e}")
 
