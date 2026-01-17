@@ -232,10 +232,13 @@ class UserSession:
 
                     # Helper for mention
                     def get_mention(entity, name):
+                        # Always show clickable Name
+                        link = f"<a href='tg://user?id={entity.id}'>{esc(name)}</a>"
+                        # Add username if available
                         if getattr(entity, 'username', None):
-                            return f"@{entity.username}"
+                            return f"{link}\n@{entity.username}"
                         else:
-                            return f"<a href='tg://user?id={entity.id}'>{esc(name)}</a>"
+                            return link
 
                     if event.out:
                         # I sent it
