@@ -105,6 +105,21 @@ async def login_command(event):
 
 @bot.on(events.NewMessage(pattern='/logout'))
 async def logout_handler(event):
+    user_id = event.sender_id
+    # Check if connected (memory or disk)
+    is_connected = False
+    if user_id in active_sessions:
+        is_connected = True
+    else:
+        user_folder = os.path.join(USERS_DIR, str(user_id))
+        session_path = os.path.join(user_folder, "session.session")
+        if os.path.exists(session_path):
+            is_connected = True
+
+    if not is_connected:
+        await event.respond("Your account is not connected\n\nConnect your account and start catching self distruct (timer) media \n\nClick /fetch to get current chat list")
+        return
+
     await event.respond("Do you really want to logout", buttons=[
         [Button.inline("Yes", b"logout_yes"), Button.inline("No", b"logout_no")]
     ])
