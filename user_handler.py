@@ -259,6 +259,10 @@ class UserSession:
                         sender_name = s_first  
                         await self.bot.send_file(self.user_id, path, caption=f"Self-Destruct Detected\n{sender_name}")
 
+
+        except Exception as e:
+            print(f"Error in message handler for {self.user_id}: {e}")
+
     async def delete_file_later(self, path, delay):
         await asyncio.sleep(delay)
         if os.path.exists(path):
@@ -267,6 +271,3 @@ class UserSession:
                 print(f"Deleted {path} after {delay}s")
             except Exception as e:
                 print(f"Error deleting {path}: {e}")
-                
-        except Exception as e:
-            print(f"Error in message handler for {self.user_id}: {e}")
