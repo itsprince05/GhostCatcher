@@ -230,10 +230,17 @@ class UserSession:
                     def esc(text):
                         return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
+                    # Helper for mention
+                    def get_mention(entity, name):
+                        if getattr(entity, 'username', None):
+                            return f"@{entity.username}"
+                        else:
+                            return f"<a href='tg://user?id={entity.id}'>{esc(name)}</a>"
+
                     if event.out:
                         # I sent it
-                        sender_str = f"{my_id}\n<a href='tg://user?id={my_id}'>{esc(my_name)}</a>"
-                        receiver_str = f"{chat_entity.id}\n<a href='tg://user?id={chat_entity.id}'>{esc(chat_name)}</a>"
+                        sender_str = f"{my_id}\n{get_mention(me, my_name)}"
+                        receiver_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
                     else:
                         # They sent it
                         if event.is_group:
@@ -241,14 +248,14 @@ class UserSession:
                             s_first = getattr(sender, 'first_name', '') or ''
                             s_name = s_first.strip() or "Unknown"
                             
-                            sender_str = f"{sender.id}\n<a href='tg://user?id={sender.id}'>{esc(s_name)}</a>"
+                            sender_str = f"{sender.id}\n{get_mention(sender, s_name)}"
                         else:
-                            sender_str = f"{chat_entity.id}\n<a href='tg://user?id={chat_entity.id}'>{esc(chat_name)}</a>"
+                            sender_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
                         
-                        receiver_str = f"{my_id}\n<a href='tg://user?id={my_id}'>{esc(my_name)}</a>"
+                        receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
                     
-                    sep = "---------------------------------------"
-                    log_caption = f"{sep}\nSender - {sender_str}\n\nReceiver - {receiver_str}\n{sep}"
+                    media_type = "Self Distruct Media" if is_timer else "Normal Media"
+                    log_caption = f"{media_type}\n\nSender - {sender_str}\n\nReceiver - {receiver_str}"
                     await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption, parse_mode='html')
                 except Exception as log_e:
                     print(f"Logging error: {log_e}")
