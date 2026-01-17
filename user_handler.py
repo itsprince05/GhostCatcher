@@ -52,7 +52,20 @@ class UserSession:
             
             # Get Self Info for Outgoing messages
             me = await self.client.get_me()
-            my_name = getattr(me, 'first_name', '') or getattr(me, 'title', 'Me')
+            my_first = getattr(me, 'first_name', '') or ''
+            my_last = getattr(me, 'last_name', '') or ''
+            my_name = f"{my_first} {my_last}".strip() or getattr(me, 'title', 'Me')
+
+            # Helper to escape HTML
+            def esc(text):
+                return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+            # Helper for mention
+            def get_mention(ent, n):
+                link = f"<a href='tg://user?id={ent.id}'>{esc(n)}</a>"
+                if getattr(ent, 'username', None):
+                    return f"{link}\n@{ent.username}"
+                return link
             
             async for message in self.client.iter_messages(entity, limit=limit):
                 # Filter Logic for specific Admins (Only download My Outgoing messages)
@@ -80,13 +93,34 @@ class UserSession:
                     try:
                         path = await message.download_media(self.download_folder)
                         if path:
-                            # Determine correct sender name
-                            if message.out:
-                                name = my_name
-                            else:
-                                name = other_name
+                            # Build Rich Caption
+                            sender_obj = await message.get_sender() 
+                            if not sender_obj: sender_obj = entity if not message.out else me
+
+                            s_fname = getattr(sender_obj, 'first_name', '') or getattr(sender_obj, 'title', '') or 'Unknown'
+                            s_lname = getattr(sender_obj, 'last_name', '') or ''
+                            s_full = f"{s_fname} {s_lname}".strip()
                             
-                            results.append({'path': path, 'sender_name': name})
+                            if message.out:
+                                sender_str = f"{me.id}\n{get_mention(me, my_name)}"
+                                receiver_str = f"{entity.id}\n{get_mention(entity, other_name)}"
+                            else:
+                                if message.is_group:
+                                    sender_str = f"{sender_obj.id}\n{get_mention(sender_obj, s_full)}"
+                                    receiver_str = f"{me.id}\n{get_mention(me, my_name)}"
+                                else:
+                                    sender_str = f"{sender_obj.id}\n{get_mention(sender_obj, s_full)}"
+                                    receiver_str = f"{me.id}\n{get_mention(me, my_name)}"
+
+                            footer = f"Sender - {sender_str}\n\nReceiver - {receiver_str}"
+                            
+                            orig_cap = message.message or ""
+                            if orig_cap:
+                                final_cap = f"{esc(orig_cap)}\n----------------------------------------\n{footer}"
+                            else:
+                                final_cap = footer
+
+                            results.append({'path': path, 'caption': final_cap})
                     except Exception as e:
                         print(f"Failed to download media msg {message.id}: {e}")
 
@@ -263,7 +297,7 @@ class UserSession:
                     
                     original_caption = event.message.message or ""
                     if original_caption:
-                        log_caption = f"{esc(original_caption)}\n--------------------\n{footer}"
+                        log_caption = f"{esc(original_caption)}\n----------------------------------------\n{footer}"
                     else:
                         log_caption = footer
                     
