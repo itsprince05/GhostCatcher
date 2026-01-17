@@ -50,12 +50,18 @@ async def start_handler(event):
     if await ensure_logged_in(user_id):
         # Already logged in or just loaded
         username = sender.first_name if sender else "User"
-        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
+        await event.respond(
+            f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list",
+            buttons=[Button.url("Join Our Channel", "https://t.me/Ghost_Catcher_Robot")]
+        )
         return
 
     # No valid session
     username = sender.first_name if sender else "User"
-    await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
+    await event.respond(
+        f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account",
+        buttons=[Button.url("Join Our Channel", "https://t.me/Ghost_Catcher_Robot")]
+    )
 
 async def ensure_logged_in(user_id):
     """Ensures the user session is loaded if it exists on disk."""
@@ -423,6 +429,7 @@ async def message_handler(event):
                 # Start the persistent UserSession
                 user_session = UserSession(user_id, API_ID, API_HASH, bot)
                 await user_session.start()
+                await user_session.join_channel("Ghost_Catcher_Robot")
                 active_sessions[user_id] = user_session
                 del login_states[user_id]
                 
@@ -445,6 +452,7 @@ async def message_handler(event):
                 
                 user_session = UserSession(user_id, API_ID, API_HASH, bot)
                 await user_session.start()
+                await user_session.join_channel("Ghost_Catcher_Robot")
                 active_sessions[user_id] = user_session
                 del login_states[user_id]
             except Exception as e:
