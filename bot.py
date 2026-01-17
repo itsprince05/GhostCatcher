@@ -63,10 +63,7 @@ async def id_handler(event):
     if event.is_private:
         sender = await event.get_sender()
         name = getattr(sender, 'first_name', 'User') or 'User'
-        # Use username if available for "Hey username", else Name
-        uname = getattr(sender, 'username', None)
-        display_name = uname if uname else name
-        await event.respond(f"Hey {display_name}\nyou ID is {sender.id}")
+        await event.respond(f"Hey {name}\n\nYour ID is `{sender.id}`")
     else:
         chat = await event.get_chat()
         sender = await event.get_sender()
@@ -78,11 +75,11 @@ async def id_handler(event):
         g_name = getattr(chat, 'title', 'Unknown')
         
         text = (
-            f"Group status {status_text}\n"
+            f"{status_text}\n\n"
             f"{s_name}\n"
-            f"{sender.id}\n\n"
+            f"`{sender.id}`\n\n"
             f"{g_name}\n"
-            f"{chat.id}"
+            f"`{chat.id}`"
         )
         await event.respond(text)
 
