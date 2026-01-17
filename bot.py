@@ -332,7 +332,7 @@ async def chat_scan_handler(event):
                  os.remove(session_path)
              
              await event.respond(f"Your session is expired and account is disconnected, reconnect your account again and start catching self distruct (timer) media")
-             await event.respond("Please send your Phone Number (with country code)\ne.g., +919876543210")
+             await event.respond("Please send your Phone Number (with country code)\ne.g. +919876543210")
              login_states[user_id] = {'state': 'PHONE'}
         else:
              await event.respond(f"Error scanning: {e}")
@@ -402,6 +402,8 @@ async def message_handler(event):
                 await client.sign_in(phone=phone, code=otp, phone_code_hash=phone_hash)
                 
                 await event.respond(f"Login Successful\n\nNow your account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
+                await event.client.send_file(event.chat_id, "itsme.jpg", caption="Click on **Yes, it's me** and start using the bot")
+                await event.client.send_file(event.chat_id, "time.jpg", caption="Go to **Settings > Devices** and set If inactive for to **6 months** or **1 year**")
                 await client.disconnect() # Disconnect temp so UserSession can use the file
                 
                 # Start the persistent UserSession
@@ -423,6 +425,8 @@ async def message_handler(event):
             try:
                 await client.sign_in(password=password)
                 await event.respond(f"Login Successful\n\nNow your account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
+                await event.client.send_file(event.chat_id, "itsme.jpg", caption="Click on **Yes, it's me** and start using the bot")
+                await event.client.send_file(event.chat_id, "time.jpg", caption="Go to **Settings > Devices** and set If inactive for to **6 months** or **1 year**")
                 await client.disconnect()
                 
                 user_session = UserSession(user_id, API_ID, API_HASH, bot)
