@@ -205,8 +205,12 @@ async def update_handler(event):
              await msg.edit("Bot is already up to date")
              return
 
-        await msg.edit(f"Update Successful\n\nOutput:\n{output}\n\nRestarting...")
+        await msg.edit(f"**Update Successful**\n\nLogs:\n`{output}`\n\n__System is restarting...__")
         
+        # Save restart state
+        with open("restart.txt", "w") as f:
+            f.write(str(event.chat_id))
+
         # Disconnect all sessions to avoid locks
         for session in active_sessions.values():
             await session.stop()
@@ -434,6 +438,18 @@ async def restore_sessions():
                     except Exception as e:
                         print(f"Failed to restore {user_id}: {e}")
 
+async def check_restart_msg():
+    """Checks for restart state and sends active message."""
+    if os.path.exists("restart.txt"):
+        try:
+            with open("restart.txt", "r") as f:
+                chat_id = int(f.read().strip())
+            await bot.send_message(chat_id, "Bot is running...")
+            os.remove("restart.txt")
+        except Exception as e:
+            print(f"Error sending restart msg: {e}")
+
 print("Bot is running...")
 bot.loop.create_task(restore_sessions())
+bot.loop.create_task(check_restart_msg())
 bot.run_until_disconnected()
