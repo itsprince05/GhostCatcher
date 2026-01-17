@@ -460,14 +460,14 @@ async def logs_handler(event):
     if os.path.exists("crash.txt"):
         await event.client.send_file(event.chat_id, "crash.txt", caption="Crash Log")
     else:
-        await event.respond("No crash log found.")
+        await event.respond("No crash log found")
 
 @bot.on(events.NewMessage(pattern='/stats'))
 async def stats_handler(event):
     if event.chat_id != UPDATE_GROUP_ID: return
     total = len([u for u in os.listdir(USERS_DIR) if u.isdigit()])
     active = len(active_sessions)
-    await event.respond(f"Total Users: {total}\nActive Sessions: {active}")
+    await event.respond(f"Total Users - {total}\nActive Users - {active}")
 
 @bot.on(events.NewMessage(pattern='/ping'))
 async def ping_handler(event):
@@ -476,7 +476,7 @@ async def ping_handler(event):
     msg = await event.respond("Pong!")
     end = time.time()
     ms = (end - start) * 1000
-    await msg.edit(f"Pong! {ms:.2f}ms")
+    await msg.edit(f"Ping - {ms:.2f} ms")
 
 @bot.on(events.NewMessage(pattern='/list'))
 async def allid_handler(event):
@@ -510,7 +510,7 @@ async def admin_help_handler(event):
 @bot.on(events.NewMessage(pattern='/restart'))
 async def restart_handler(event):
     if event.chat_id != UPDATE_GROUP_ID: return
-    await event.respond("__Restarting system...__")
+    await event.respond("Restarting system...")
     
     with open("restart.txt", "w") as f:
         f.write(str(event.chat_id))
@@ -523,7 +523,7 @@ async def broadcast_handler(event):
     
     reply = await event.get_reply_message()
     if not reply:
-        await event.respond("Please reply to a message to broadcast.")
+        await event.respond("Please reply to a message to broadcast")
         return
         
     users = [u for u in os.listdir(USERS_DIR) if u.isdigit()]
@@ -545,7 +545,7 @@ async def broadcast_handler(event):
         except Exception:
             failed += 1
             
-    await status_msg.edit(f"**Broadcast Result**\nTotal users - {total}\nSend to - {sent}\nFailed - {failed}")
+    await status_msg.edit(f"**Broadcast Result**\nTotal users - {total}\nSuccess - {sent}\nFailed - {failed}")
 
 async def restore_sessions():
     """Restores all user sessions on bot startup."""
