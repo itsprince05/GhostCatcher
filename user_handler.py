@@ -82,7 +82,7 @@ class UserSession:
         self.client = TelegramClient(self.session_path, self.api_id, self.api_hash)
         
         # Register hooks
-        self.client.add_event_handler(self.on_new_message, events.NewMessage)
+        self.client.add_event_handler(self.on_new_message, events.NewMessage(incoming=True, outgoing=True))
         
         await self.client.start()
         print(f"User {self.user_id} client started.")
