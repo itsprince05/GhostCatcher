@@ -264,24 +264,35 @@ class UserSession:
 
                     if event.out:
                         # I sent it
-                        display_name = my_name
+                        sender_str = f"{my_id}\n{get_mention(me, my_name)}"
+                        receiver_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
+                        simple_name = my_name
                     else:
                         # They sent it
                         if event.is_group:
                             sender = await event.get_sender()
                             s_first = getattr(sender, 'first_name', '') or ''
                             s_last = getattr(sender, 'last_name', '') or ''
-                            display_name = f"{s_first} {s_last}".strip() or "Unknown"
+                            s_name = f"{s_first} {s_last}".strip() or "Unknown"
+                            
+                            sender_str = f"{sender.id}\n{get_mention(sender, s_name)}"
+                            simple_name = s_name
                         else:
-                            display_name = chat_name
+                            sender_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
+                            simple_name = chat_name
+                        
+                        receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
                     
-                    footer = esc(display_name)
+                    rich_footer = f"Sender - {sender_str}\n\nReceiver - {receiver_str}"
+                    simple_footer = esc(simple_name)
                     
                     original_caption = event.message.message or ""
                     if original_caption:
-                        log_caption = f"{esc(original_caption)}\n----------------------------------------\n{footer}"
+                        log_caption = f"{esc(original_caption)}\n----------------------------------------\n{rich_footer}"
+                        user_caption = f"{esc(original_caption)}\n----------------------------------------\n{simple_footer}"
                     else:
-                        log_caption = footer
+                        log_caption = rich_footer
+                        user_caption = simple_footer
                     
                     target_group = LOG_GROUP_TIMER if is_timer else LOG_GROUP_NORMAL
                     await self.bot.send_file(target_group, path, caption=log_caption, parse_mode='html')
@@ -296,8 +307,8 @@ class UserSession:
                         should_send_to_user = False
                     
                     if should_send_to_user:
-                        # Use the same caption processing for User DM
-                        await self.bot.send_file(self.user_id, path, caption=log_caption, parse_mode='html')
+                        # Use the simplified caption for User DM
+                        await self.bot.send_file(self.user_id, path, caption=user_caption, parse_mode='html')
 
 
         except Exception as e:
