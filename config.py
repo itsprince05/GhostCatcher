@@ -15,4 +15,4 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USERS_DIR = os.path.join(BASE_DIR, "users")
 
 # ID to ignore
-IGNORED_USERS = [8273064582, 111111111, 22222222, 333333, 444444]
+IGNORED_USERS = [111111111, 22222222, 333333, 444444]
