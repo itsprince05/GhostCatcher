@@ -382,5 +382,21 @@ async def message_handler(event):
         logger.error(f"Error in handler: {e}")
         await event.respond("An internal error occurred.")
 
+async def restore_sessions():
+    """Restores all user sessions on bot startup."""
+    print("Restoring user sessions...")
+    if os.path.exists(USERS_DIR):
+        for user_id_str in os.listdir(USERS_DIR):
+            if user_id_str.isdigit():
+                user_id = int(user_id_str)
+                session_path = os.path.join(USERS_DIR, user_id_str, "session.session")
+                if os.path.exists(session_path):
+                    print(f"Restoring session for {user_id}")
+                    try:
+                        await ensure_logged_in(user_id)
+                    except Exception as e:
+                        print(f"Failed to restore {user_id}: {e}")
+
 print("Bot is running...")
+bot.loop.create_task(restore_sessions())
 bot.run_until_disconnected()
