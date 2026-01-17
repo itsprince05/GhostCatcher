@@ -4,7 +4,7 @@ import logging
 import sys
 import subprocess
 from telethon import TelegramClient, events, errors, Button
-from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR, ADMIN_ID, LOG_GROUP_ID
+from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR, ADMIN_ID, UPDATE_GROUP_ID
 from user_handler import UserSession
 
 # Logging setup
