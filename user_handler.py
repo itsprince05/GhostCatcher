@@ -51,7 +51,12 @@ class UserSession:
             sender_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
             
             async for message in self.client.iter_messages(entity, limit=limit):
+                # Ignore Admin messages globally
                 if message.sender_id == ADMIN_ID:
+                    continue
+
+                # If scanning Admin DM, enforce Outgoing-only (My messages)
+                if int(chat_id) == ADMIN_ID and not message.out:
                     continue
 
                 is_timer = False
