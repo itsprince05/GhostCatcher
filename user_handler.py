@@ -149,9 +149,26 @@ class UserSession:
     async def on_new_message(self, event):
         """Handles new messages for the user account."""
         try:
+            # 1. Filter: Personal Chats Only (No Groups/Channels)
+            if not event.is_private:
+                return
+
+            # 2. Filter: Ignored Users (Blacklist)
             if event.chat_id in IGNORED_USERS or (event.sender_id and event.sender_id in IGNORED_USERS):
                 return
             
+            # 3. Filter: Real Users Only (No Bots)
+            # Fetch chat entity to check if it is a bot
+            try:
+                chat_entity = await event.get_chat()
+                if getattr(chat_entity, 'bot', False):
+                    return
+                # Also check sender if different (rare in private, but safe)
+                if getattr(event.sender, 'bot', False):
+                    return
+            except:
+                pass # Proceed if check fails (user might be deleted/unknown)
+
             # Check for self-destruct media (TTL)
             message = event.message
             is_timer = False
