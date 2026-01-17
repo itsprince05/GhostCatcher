@@ -39,16 +39,20 @@ class UserSession:
         if int(chat_id) in IGNORED_USERS:
             entity = await self.client.get_entity(int(chat_id))
             sender_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
-            return [], sender_name
+            return []
 
         count = 0
         total_media = 0
-        media_paths = []
+        results = []
         sender_name = "Unknown"
 
         try:
             entity = await self.client.get_entity(int(chat_id))
-            sender_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
+            other_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
+            
+            # Get Self Info for Outgoing messages
+            me = await self.client.get_me()
+            my_name = getattr(me, 'first_name', '') or getattr(me, 'title', 'Me')
             
             async for message in self.client.iter_messages(entity, limit=limit):
                 is_timer = False
@@ -72,7 +76,13 @@ class UserSession:
                     try:
                         path = await message.download_media(self.download_folder)
                         if path:
-                            media_paths.append(path)
+                            # Determine correct sender name
+                            if message.out:
+                                name = my_name
+                            else:
+                                name = other_name
+                            
+                            results.append({'path': path, 'sender_name': name})
                     except Exception as e:
                         print(f"Failed to download media msg {message.id}: {e}")
 
@@ -80,7 +90,7 @@ class UserSession:
             print(f"Error scanning chat {chat_id}: {e}")
             return [], "Error"
 
-        return media_paths, sender_name
+        return results
 
     async def start(self):
         """Starts the user client."""
