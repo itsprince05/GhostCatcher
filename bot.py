@@ -122,6 +122,11 @@ async def logout_confirm(event):
     if user_id in active_sessions:
         await active_sessions[user_id].logout()
         del active_sessions[user_id]
+    else:
+        # Load temporary session wrapper to perform clean logout from Telegram side
+        # This handles cases where bot restarted (memory cleared) but session file exists
+        user_session = UserSession(user_id, API_ID, API_HASH, bot)
+        await user_session.logout()
 
     # Force delete folder content if needed (UserSession.logout only deletes session file)
     # Re-verify deletion
