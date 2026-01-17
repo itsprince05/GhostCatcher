@@ -296,13 +296,30 @@ async def chat_scan_handler(event):
             return
             
         total = len(results)
+        # Helper to escape HTML for bot.py side
+        def esc(text):
+            return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
         for i, item in enumerate(results):
             path = item['path']
-            # Use Rich Caption
-            caption = item.get('caption', '')
+            mention = item['sender_mention']
+            orig_cap = item.get('original_caption', '')
             
+            parts = []
+            if orig_cap:
+                parts.append(esc(orig_cap))
+                parts.append("----------------------------------------")
+            
+            footer_lines = []
             if total > 1:
-                caption = f"[{i+1}/{total}]\n{caption}"
+                # User asked for 'i/n' format, e.g. 1/2
+                footer_lines.append(f"{i+1}/{total}")
+            
+            footer_lines.append(mention)
+            
+            parts.append("\n".join(footer_lines))
+            
+            caption = "\n".join(parts)
             
             await bot.send_file(user_id, path, caption=caption, parse_mode='html')
         
