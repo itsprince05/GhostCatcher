@@ -55,6 +55,12 @@ class UserSession:
                 # Check message main TTL
                 if getattr(message, 'ttl_seconds', None):
                     is_timer = True
+                elif getattr(message, 'ttl_period', None):
+                    # Some updates use ttl_period
+                    is_timer = True
+                elif getattr(message, 'expire_date', None):
+                    # If it has an expire date, it is likely a timer message
+                    is_timer = True
                 # Check media specific TTL (View Once often lives here)
                 elif message.media and getattr(message.media, 'ttl_seconds', None):
                     is_timer = True
