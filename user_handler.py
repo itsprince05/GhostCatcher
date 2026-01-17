@@ -119,14 +119,7 @@ class UserSession:
             return [], "Error"
         
         return results
-                    except Exception as e:
-                        print(f"Failed to download media msg {message.id}: {e}")
 
-        except Exception as e:
-            print(f"Error scanning chat {chat_id}: {e}")
-            return [], "Error"
-
-        return results
 
     async def start(self):
         """Starts the user client."""
