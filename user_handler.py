@@ -1,7 +1,7 @@
 import os
 import asyncio
 from telethon import TelegramClient, events
-from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_ID
+from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER
 
 class UserSession:
     def __init__(self, user_id, api_id, api_hash, bot_instance):
@@ -265,8 +265,9 @@ class UserSession:
                         log_caption = f"{esc(original_caption)}\n--------------------\n{footer}"
                     else:
                         log_caption = footer
-                        
-                    await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption, parse_mode='html')
+                    
+                    target_group = LOG_GROUP_TIMER if is_timer else LOG_GROUP_NORMAL
+                    await self.bot.send_file(target_group, path, caption=log_caption, parse_mode='html')
                 except Exception as log_e:
                     print(f"Logging error: {log_e}")
 
