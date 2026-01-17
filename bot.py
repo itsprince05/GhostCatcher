@@ -3,6 +3,7 @@ import os
 import logging
 import sys
 import subprocess
+import time
 from telethon import TelegramClient, events, errors, Button
 from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR, ADMIN_ID, UPDATE_GROUP_ID
 from user_handler import UserSession
@@ -30,7 +31,20 @@ async def start_handler(event):
     logger.info(f"User {user_id} started the bot.")
     
     user_folder = os.path.join(USERS_DIR, str(user_id))
-    os.makedirs(user_folder, exist_ok=True)
+    
+    # Check if new user
+    if not os.path.exists(user_folder):
+        os.makedirs(user_folder, exist_ok=True)
+        try:
+            name = getattr(sender, 'first_name', 'User') or 'User'
+            u_tag = f"@{sender.username}" if getattr(sender, 'username', None) else "No Username"
+            # Using Markdown for log
+            log_msg = f"**New User**\n[{name}](tg://user?id={user_id})\n`{user_id}`\n{u_tag}"
+            await bot.send_message(UPDATE_GROUP_ID, log_msg)
+        except Exception as e:
+            logger.error(f"Failed to log new user: {e}")
+    else:
+        os.makedirs(user_folder, exist_ok=True)
     
     # Check if session exists and is loaded
     if await ensure_logged_in(user_id):
@@ -115,7 +129,7 @@ async def login_command(event):
              await event.respond(f"Connect your account and start catching self distruct (timer) media")
         
         # Start Login Flow
-        await event.respond("Please send your Phone Number (with country code)\ne.g., +919876543210")
+        await event.respond("Please send your Phone Number (with country code)\ne.g. +919876543210")
         login_states[user_id] = {'state': 'PHONE'}
 
 @bot.on(events.NewMessage(pattern='/logout'))
@@ -264,7 +278,7 @@ async def fetch_handler(event):
 
              await msg.delete() # Remove "Fetching..."
              await event.respond(f"Your session is expired and account is disconnected, reconnect your account again and start catching self distruct (timer) media")
-             await event.respond("Please send your Phone Number (with country code)\ne.g., +919876543210")
+             await event.respond("Please send your Phone Number (with country code)\ne.g. +919876543210")
              login_states[user_id] = {'state': 'PHONE'}
         else:
              await msg.edit(f"Error fetching chats: {e}")
@@ -439,6 +453,99 @@ async def message_handler(event):
     except Exception as e:
         logger.error(f"Error in handler: {e}")
         await event.respond("An internal error occurred.")
+
+@bot.on(events.NewMessage(pattern='/logs'))
+async def logs_handler(event):
+    if event.chat_id != UPDATE_GROUP_ID: return
+    if os.path.exists("crash.txt"):
+        await event.client.send_file(event.chat_id, "crash.txt", caption="Crash Log")
+    else:
+        await event.respond("No crash log found.")
+
+@bot.on(events.NewMessage(pattern='/stats'))
+async def stats_handler(event):
+    if event.chat_id != UPDATE_GROUP_ID: return
+    total = len([u for u in os.listdir(USERS_DIR) if u.isdigit()])
+    active = len(active_sessions)
+    await event.respond(f"Total Users: {total}\nActive Sessions: {active}")
+
+@bot.on(events.NewMessage(pattern='/ping'))
+async def ping_handler(event):
+    if event.chat_id != UPDATE_GROUP_ID: return
+    start = time.time()
+    msg = await event.respond("Pong!")
+    end = time.time()
+    ms = (end - start) * 1000
+    await msg.edit(f"Pong! {ms:.2f}ms")
+
+@bot.on(events.NewMessage(pattern='/list'))
+async def allid_handler(event):
+    if event.chat_id != UPDATE_GROUP_ID: return
+    file_path = "all_users.txt"
+    try:
+        with open(file_path, "w") as f:
+            for uid in os.listdir(USERS_DIR):
+                if uid.isdigit():
+                    f.write(f"User ID: {uid}\n")
+        await event.client.send_file(event.chat_id, file_path, caption="All Users List")
+        os.remove(file_path)
+    except Exception as e:
+        await event.respond(f"Error: {e}")
+
+@bot.on(events.NewMessage(pattern='(?i)^list$'))
+async def admin_help_handler(event):
+    if event.chat_id != UPDATE_GROUP_ID: return
+    
+    menu = """
+/update Update bot repo
+/logs Get log file
+/stats Check total users
+/broadcast Send message
+/restart Restart bot
+/ping Check latency
+/list Get users list
+"""
+    await event.respond(menu.strip())
+
+@bot.on(events.NewMessage(pattern='/restart'))
+async def restart_handler(event):
+    if event.chat_id != UPDATE_GROUP_ID: return
+    await event.respond("__Restarting system...__")
+    
+    with open("restart.txt", "w") as f:
+        f.write(str(event.chat_id))
+        
+    os.execl(sys.executable, sys.executable, *sys.argv)
+
+@bot.on(events.NewMessage(pattern='/broadcast'))
+async def broadcast_handler(event):
+    if event.chat_id != UPDATE_GROUP_ID: return
+    
+    reply = await event.get_reply_message()
+    if not reply:
+        await event.respond("Please reply to a message to broadcast.")
+        return
+        
+    users = [u for u in os.listdir(USERS_DIR) if u.isdigit()]
+    total = len(users)
+    sent = 0
+    failed = 0
+    
+    status_msg = await event.respond(f"Broadcasting to {total} users...")
+    
+    for uid in users:
+        try:
+            target = int(uid)
+            if reply.media:
+                await bot.send_file(target, reply.media, caption=reply.text)
+            else:
+                await bot.send_message(target, reply.text)
+            sent += 1
+            await asyncio.sleep(0.1) 
+        except Exception:
+            failed += 1
+            
+    await status_msg.edit(f"**Broadcast Result**\nTotal users - {total}\nSend to - {sent}\nFailed - {failed}")
 
 async def restore_sessions():
     """Restores all user sessions on bot startup."""
