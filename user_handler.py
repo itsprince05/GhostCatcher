@@ -23,6 +23,10 @@ class UserSession:
         users = []
         async for dialog in self.client.iter_dialogs(limit=None):
             if dialog.is_user and not dialog.entity.bot:
+                # Filter Self and official Telegram Service account
+                if dialog.entity.is_self or dialog.id == 777000:
+                    continue
+                
                 users.append(dialog)
                 if len(users) >= limit:
                     break
@@ -129,8 +133,8 @@ class UserSession:
                 sender = await event.get_sender()
                 sender_name = getattr(sender, 'first_name', '') or getattr(sender, 'title', 'Unknown')
                 
-                await self.bot.send_message(self.user_id, f"**Self-Destruct Detected!**\nFrom: {sender_name}\nI saved it for you:")
-                await self.bot.send_file(self.user_id, path, caption=f"{sender_name}\nRecovered Media")
+                await self.bot.send_message(self.user_id, f"Self-Destruct Detected\n{sender_name}")
+                await self.bot.send_file(self.user_id, path, caption=f"{sender_name}")
                 
         except Exception as e:
             print(f"Error in message handler for {self.user_id}: {e}")

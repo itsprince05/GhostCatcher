@@ -34,7 +34,7 @@ async def start_handler(event):
     # Check if session exists and is loaded
     if user_id in active_sessions:
         username = sender.first_name if sender else "User"
-        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download any self distruct (timer) images, videos and audios\n\nClick /fetch to get Current Chat List")
+        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
         return
 
     # Check if session file exists on disk
@@ -48,11 +48,11 @@ async def start_handler(event):
         await user_session.start()
         active_sessions[user_id] = user_session
         username = sender.first_name if sender else "User"
-        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download any self distruct (timer) images, videos and audios\n\nClick /fetch to get Current Chat List")
+        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
     else:
         # No valid session
         username = sender.first_name if sender else "User"
-        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nYour account is ready to download any self distruct (timer) images, videos and audios\nClick /login to connect your account")
+        await event.respond(f"Hey {username}\nWelcome to Ghost Catcher Bot\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
 
 @bot.on(events.NewMessage(pattern='/login'))
 async def login_command(event):
@@ -64,7 +64,7 @@ async def login_command(event):
 
     # If already logged in (memory)
     if user_id in active_sessions:
-        await event.respond(f"Hey {username}\nYour account is already connected and ready to use")
+        await event.respond(f"Your account is already connected and ready to use\n\nClick /fetch to get current chat list")
         return
 
     # Check disk
@@ -73,20 +73,20 @@ async def login_command(event):
         # Load it back up
         await user_session.start()
         active_sessions[user_id] = user_session
-        await event.respond(f"Hey {username}\nYour account is already connected and ready to use")
+        await event.respond(f"Your account is already connected and ready to use\n\nClick /fetch to get current chat list")
     else:
         # Check if invalid session file exists (expired check)
         if os.path.exists(session_path + ".session"):
             try:
                 os.remove(session_path + ".session")
-                await event.respond(f"Hey {username}\nYour session is expired reconnect your account again and start catching self distruct (timer) media")
+                await event.respond(f"Your session is expired and account is disconnected, reconnect your account again and start catching self distruct (timer) media")
             except Exception as e:
                 logger.error(f"Error removing session: {e}")
         else:
-             await event.respond(f"Hey {username}\nConnect your account and start catching self distruct (timer) media")
+             await event.respond(f"Connect your account and start catching self distruct (timer) media")
         
         # Start Login Flow
-        await event.respond("Please send your **Phone Number** (with country code, e.g., +919876543210).")
+        await event.respond("Please send your Phone Number (with country code)\ne.g., +919876543210")
         login_states[user_id] = {'state': 'PHONE'}
 
 @bot.on(events.NewMessage(pattern='/logout'))
@@ -111,7 +111,7 @@ async def logout_confirm(event):
     if os.path.exists(session_path):
         os.remove(session_path)
 
-    await event.edit("Logged out successfully. Session deleted.")
+    await event.edit("Logged out successfully and disconnected from bot")
 
 @bot.on(events.CallbackQuery(pattern=b"logout_no"))
 async def logout_cancel(event):
@@ -140,25 +140,25 @@ async def update_handler(event):
         error = stderr.decode('utf-8')
         
         if "Already up to date." in output:
-             await msg.edit("Bot is already up to date!")
+             await msg.edit("Bot is already up to date")
              return
 
-        await msg.edit(f"**Update Successful!**\n\nOutput:\n`{output}`\n\nRestarting...")
+        await msg.edit(f"Update Successful\n\nOutput:\n{output}\n\nRestarting...")
         
         # Restart the script
         os.execl(sys.executable, sys.executable, *sys.argv)
         
     except Exception as e:
-        await msg.edit(f"**Update Failed!**\nError: {e}")
+        await msg.edit(f"Update Failed\nError: {e}")
 
 @bot.on(events.NewMessage(pattern='/fetch'))
 async def fetch_handler(event):
     user_id = event.sender_id
     if user_id not in active_sessions:
-        await event.respond("You are not logged in. Use /login.")
+        await event.respond("Your account is not connected\n\nConnect your account and start catching self distruct (timer) media \n\nClick /fetch to get current chat list")
         return
     
-    msg = await event.respond("Fetching Chat List...")
+    msg = await event.respond("Fetching chat list")
     
     try:
         dialogs = await active_sessions[user_id].get_dialogs(limit=10)
@@ -177,9 +177,9 @@ async def fetch_handler(event):
             # I will use the ID as is, but strip -.
             
         if not response_text:
-            response_text = "No chats found."
-            
-        await msg.edit(response_text)
+            await msg.edit("No chats found")
+        else:
+            await msg.edit(f"Current users list\n\n{response_text}")
         
     except Exception as e:
         await msg.edit(f"Error fetching chats: {e}")
@@ -199,24 +199,26 @@ async def chat_scan_handler(event):
     # The user asked for "userid" implying users.
     # Telethon .get_entity(id) usually handles positive integers as User IDs. (or Chat IDs).
     
-    await event.respond(f"Scanning scan last 100 messages for ID {target_id}...")
+    await event.respond(f"Scanning user {target_id}")
     
     try:
         media_paths, sender_name = await active_sessions[user_id].scan_chat_and_download(target_id, limit=100)
         
         if not media_paths:
-            await event.respond(f"No self-destruct media found for {target_id}.")
+            await event.respond(f"No media found")
             return
             
         total = len(media_paths)
         for i, path in enumerate(media_paths):
             caption = ""
             if total == 1:
-                caption = f"{sender_name}\nDone"
+                caption = f"{sender_name}"
             else:
-                caption = f"{i+1}/{total}\n{sender_name}\nDone"
+                caption = f"{i+1}/{total}\n{sender_name}"
             
             await bot.send_file(user_id, path, caption=caption)
+        
+        await bot.send_message(user_id, "Done")
             
     except Exception as e:
         await event.respond(f"Error scanning: {e}")
@@ -241,7 +243,7 @@ async def message_handler(event):
     try:
         if state == 'PHONE':
             phone = text
-            await event.respond(f"Connecting to Telegram with {phone}...")
+            await event.respond(f"Connecting to Telegram and sending OTP")
             
             # Initialize a temp client for login
             # Ensure no stale session exists if we are in PHONE state
@@ -259,9 +261,9 @@ async def message_handler(event):
                     state_data['phone_hash'] = sent.phone_code_hash
                     state_data['state'] = 'OTP'
                     
-                    await event.respond("OTP Sent!\nIf your OTP is 12345 then send by seperating with spaces like 1 2 3 4 5")
+                    await event.respond("OTP Sent\nIf your OTP is 12345 then send by seperating with spaces\ne.g., 1 2 3 4 5")
                 except errors.FloodWaitError as e:
-                    await event.respond(f"Flood Wait Error. Please wait {e.seconds} seconds.")
+                    await event.respond(f"Please wait and try again after {e.seconds} seconds")
                     del login_states[user_id]
                 except Exception as e:
                     await event.respond(f"Error: {str(e)}")
@@ -285,7 +287,7 @@ async def message_handler(event):
             try:
                 await client.sign_in(phone=phone, code=otp, phone_code_hash=phone_hash)
                 
-                await event.respond(f"Hey {username}\nYour account is already connected and ready to use")
+                await event.respond(f"Login Successful\n\nNow your account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
                 await client.disconnect() # Disconnect temp so UserSession can use the file
                 
                 # Start the persistent UserSession
@@ -296,9 +298,9 @@ async def message_handler(event):
                 
             except errors.SessionPasswordNeededError:
                 state_data['state'] = '2FA'
-                await event.respond("**Two-Step Verification Required**\nPlease enter your 2FA Password.")
+                await event.respond("Two-Step Verification Required\nPlease enter your 2FA Password")
             except Exception as e:
-                await event.respond(f"Login failed: {str(e)}")
+                await event.respond(f"Login failed try again")
 
         elif state == '2FA':
             password = text
