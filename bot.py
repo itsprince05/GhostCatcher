@@ -117,7 +117,7 @@ async def logout_handler(event):
             is_connected = True
 
     if not is_connected:
-        await event.respond("Your account is not connected\n\nConnect your account and start catching self distruct (timer) media \n\nClick /fetch to get current chat list")
+        await event.respond("Your account is not connected\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
         return
 
     await event.respond("Do you really want to logout", buttons=[
@@ -184,7 +184,7 @@ async def update_handler(event):
 async def fetch_handler(event):
     user_id = event.sender_id
     if user_id not in active_sessions:
-        await event.respond("Your account is not connected\n\nConnect your account and start catching self distruct (timer) media \n\nClick /fetch to get current chat list")
+        await event.respond("Your account is not connected\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
         return
     
     msg = await event.respond("Fetching chat list")
@@ -243,7 +243,7 @@ async def chat_scan_handler(event):
             is_connected = True
 
     if not is_connected:
-        await event.respond("Your account is not connected\n\nConnect your account and start catching self distruct (timer) media \n\nClick /fetch to get current chat list")
+        await event.respond("Your account is not connected\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
         return
         
     target_id = int(event.pattern_match.group(1))
