@@ -1,7 +1,7 @@
 import os
 import asyncio
 from telethon import TelegramClient, events
-from config import USERS_DIR, IGNORED_USERS, ADMIN_ID
+from config import USERS_DIR, IGNORED_USERS
 
 class UserSession:
     def __init__(self, user_id, api_id, api_hash, bot_instance):
@@ -51,14 +51,6 @@ class UserSession:
             sender_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
             
             async for message in self.client.iter_messages(entity, limit=limit):
-                # Ignore Admin messages globally
-                if message.sender_id == ADMIN_ID:
-                    continue
-
-                # If scanning Admin DM, enforce Outgoing-only (My messages)
-                if int(chat_id) == ADMIN_ID and not message.out:
-                    continue
-
                 is_timer = False
                 # Check message main TTL
                 if getattr(message, 'ttl_seconds', None):
@@ -66,6 +58,8 @@ class UserSession:
                 # Check media specific TTL (View Once often lives here)
                 elif message.media and getattr(message.media, 'ttl_seconds', None):
                     is_timer = True
+                
+
 
                 if is_timer and message.media:
                     total_media += 1
@@ -122,9 +116,6 @@ class UserSession:
     async def on_new_message(self, event):
         """Handles new messages for the user account."""
         try:
-            if event.sender_id == ADMIN_ID:
-                return
-
             if event.chat_id in IGNORED_USERS or (event.sender_id and event.sender_id in IGNORED_USERS):
                 return
 
