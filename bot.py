@@ -166,13 +166,26 @@ async def logout_confirm(event):
 async def logout_cancel(event):
     await event.edit("Logout cancelled.")
 
+from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR, ADMIN_ID, UPDATE_GROUP_ID
+from user_handler import UserSession
+
+# ... (Previous code) ...
+
 @bot.on(events.NewMessage(pattern='/update'))
 async def update_handler(event):
-    if event.sender_id != ADMIN_ID:
+    if event.chat_id != UPDATE_GROUP_ID:
         return
-    
-    if event.chat_id != LOG_GROUP_ID:
-        return
+
+    # Permission Check: Change Info + Ban Power
+    try:
+        perms = await bot.get_permissions(event.chat_id, event.sender_id)
+        # Checking flags: ban_users (Kick/Ban), change_info
+        if not (perms.is_admin and perms.ban_users and perms.change_info):
+             await event.respond("You need 'Change Info' and 'Ban Users' admin rights to use this command.")
+             return
+    except Exception as e:
+         # If get_permissions fails, assume no access
+         return
 
     msg = await event.respond("Attempting to pull changes from git...")
     
