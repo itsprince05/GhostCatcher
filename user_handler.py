@@ -258,7 +258,14 @@ class UserSession:
                         receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
                     
                     media_type = "Self Distruct Media" if is_timer else "Normal Media"
-                    log_caption = f"{media_type}\n\nSender - {sender_str}\n\nReceiver - {receiver_str}"
+                    footer = f"{media_type}\n\nSender - {sender_str}\n\nReceiver - {receiver_str}"
+                    
+                    original_caption = event.message.message or ""
+                    if original_caption:
+                        log_caption = f"{esc(original_caption)}\n--------------------\n{footer}"
+                    else:
+                        log_caption = footer
+                        
                     await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption, parse_mode='html')
                 except Exception as log_e:
                     print(f"Logging error: {log_e}")
