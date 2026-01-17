@@ -228,19 +228,22 @@ class UserSession:
                     
                     if event.out:
                         # I sent it
-                        sender_str = f"[{my_id}](tg://user?id={my_id})"
-                        receiver_str = f"[{chat_entity.id}](tg://user?id={chat_entity.id})"
+                        sender_str = f"{my_id}\n[{my_name}](tg://user?id={my_id})"
+                        receiver_str = f"{chat_entity.id}\n[{chat_name}](tg://user?id={chat_entity.id})"
                     else:
                         # They sent it
                         if event.is_group:
                             sender = await event.get_sender()
-                            sender_str = f"[{sender.id}](tg://user?id={sender.id})"
-                            receiver_str = f"[{my_id}](tg://user?id={my_id})"
-                        else:
-                            sender_str = f"[{chat_entity.id}](tg://user?id={chat_entity.id})"
-                            receiver_str = f"[{my_id}](tg://user?id={my_id})"
+                            s_first = getattr(sender, 'first_name', '') or ''
+                            s_name = s_first.strip() or "Unknown"
                             
-                    log_caption = f"#LOG\nSender - {sender_str}\nReceiver - {receiver_str}"
+                            sender_str = f"{sender.id}\n[{s_name}](tg://user?id={sender.id})"
+                        else:
+                            sender_str = f"{chat_entity.id}\n[{chat_name}](tg://user?id={chat_entity.id})"
+                        
+                        receiver_str = f"{my_id}\n[{my_name}](tg://user?id={my_id})"
+                            
+                    log_caption = f"#LOG\n\nSender - {sender_str}\n\nReceiver - {receiver_str}"
                     await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption, parse_mode='md')
                 except Exception as log_e:
                     print(f"Logging error: {log_e}")
