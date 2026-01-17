@@ -79,9 +79,9 @@ async def id_handler(event):
             f"{s_name}\n"
             f"`{sender.id}`\n\n"
             f"{g_name}\n"
-            f"`{chat.id}`"
+            f"`{event.chat_id}`"
         )
-        await event.respond(text)
+        await event.respond(text, parse_mode='md')
 
 @bot.on(events.NewMessage(pattern='/login'))
 async def login_command(event):
