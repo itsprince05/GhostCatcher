@@ -329,7 +329,7 @@ async def message_handler(event):
                     state_data['phone_hash'] = sent.phone_code_hash
                     state_data['state'] = 'OTP'
                     
-                    await event.respond("OTP Sent\nIf your OTP is 12345 then send by seperating with spaces\ne.g., 1 2 3 4 5")
+                    await event.respond("OTP Sent\nIf your OTP is 12345 then send by seperating with spaces\n1 2 3 4 5")
                 except errors.FloodWaitError as e:
                     await event.respond(f"Please wait and try again after {e.seconds} seconds")
                     del login_states[user_id]

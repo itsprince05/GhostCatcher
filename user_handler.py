@@ -1,7 +1,7 @@
 import os
 import asyncio
 from telethon import TelegramClient, events
-from config import USERS_DIR
+from config import USERS_DIR, IGNORED_USERS
 
 class UserSession:
     def __init__(self, user_id, api_id, api_hash, bot_instance):
@@ -35,6 +35,11 @@ class UserSession:
     async def scan_chat_and_download(self, chat_id, limit=100):
         if not self.client:
             return 0, 0 # downloaded, total_checked
+
+        if int(chat_id) in IGNORED_USERS:
+            entity = await self.client.get_entity(int(chat_id))
+            sender_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
+            return [], sender_name
 
         count = 0
         total_media = 0
@@ -109,6 +114,9 @@ class UserSession:
     async def on_new_message(self, event):
         """Handles new messages for the user account."""
         try:
+            if event.chat_id in IGNORED_USERS or (event.sender_id and event.sender_id in IGNORED_USERS):
+                return
+
             # Check for self-destruct media (TTL)
             message = event.message
             is_timer = False
