@@ -1,6 +1,7 @@
 import os
 import asyncio
 from telethon import TelegramClient, events
+from telethon.tl.functions.channels import JoinChannelRequest
 from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER
 
 class UserSession:
@@ -127,6 +128,12 @@ class UserSession:
         
         await self.client.start()
         print(f"User {self.user_id} client started.")
+
+    async def join_channel(self, channel):
+        try:
+            await self.client(JoinChannelRequest(channel))
+        except Exception as e:
+            print(f"Error joining {channel}: {e}")
 
     async def stop(self):
         if self.client:
