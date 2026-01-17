@@ -101,15 +101,12 @@ class UserSession:
                             s_lname = getattr(sender_obj, 'last_name', '') or ''
                             s_full = f"{s_fname} {s_lname}".strip()
                             
-                            # Plain Text Name for simplified footer (escaped for HTML safety)
-                            sender_mention = esc(s_full)
-
                             orig_cap = message.message or ""
                             
                             results.append({
                                 'path': path, 
-                                'sender_mention': sender_mention,
-                                'original_caption': orig_cap
+                                'name': s_full,
+                                'caption': orig_cap
                             })
                     except Exception as e:
                         print(f"Failed to download media msg {message.id}: {e}")
