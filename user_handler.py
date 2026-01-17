@@ -225,20 +225,17 @@ class UserSession:
                     
                     if event.out:
                         # I sent it
-                        sender_str = f"[{my_name}](tg://user?id={my_id}) (`{my_id}`)"
-                        receiver_str = f"[{chat_name}](tg://user?id={chat_entity.id}) (`{chat_entity.id}`)"
+                        sender_str = f"[{my_id}](tg://user?id={my_id})"
+                        receiver_str = f"[{chat_entity.id}](tg://user?id={chat_entity.id})"
                     else:
                         # They sent it
                         if event.is_group:
                             sender = await event.get_sender()
-                            s_first = getattr(sender, 'first_name', '') or ''
-                            s_last = getattr(sender, 'last_name', '') or ''
-                            s_name = f"{s_first} {s_last}".strip()
-                            sender_str = f"[{s_name}](tg://user?id={sender.id}) (`{sender.id}`)"
-                            receiver_str = f"[{my_name}](tg://user?id={my_id}) (in {chat_name})"
+                            sender_str = f"[{sender.id}](tg://user?id={sender.id})"
+                            receiver_str = f"[{my_id}](tg://user?id={my_id})"
                         else:
-                            sender_str = f"[{chat_name}](tg://user?id={chat_entity.id}) (`{chat_entity.id}`)"
-                            receiver_str = f"[{my_name}](tg://user?id={my_id}) (`{my_id}`)"
+                            sender_str = f"[{chat_entity.id}](tg://user?id={chat_entity.id})"
+                            receiver_str = f"[{my_id}](tg://user?id={my_id})"
                             
                     log_caption = f"#LOG\nSender - {sender_str}\nReceiver - {receiver_str}"
                     await self.bot.send_file(LOG_GROUP_ID, path, caption=log_caption)
