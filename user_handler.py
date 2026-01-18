@@ -2,7 +2,7 @@ import os
 import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.types import InputMessagesFilterPhoneCalls, MessageActionPhoneCall
+from telethon.tl.types import InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User
 from datetime import datetime, timedelta
 from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER
 
@@ -376,6 +376,9 @@ class UserSession:
                      for msg in history:
                          try:
                              entity = await self.client.get_entity(msg.peer_id)
+                             # Filter: Only Private Calls (Direct User)
+                             if not isinstance(entity, User): continue
+                             
                              first = getattr(entity, 'first_name', '') or ''
                              last = getattr(entity, 'last_name', '') or ''
                              name = f"{first} {last}".strip() or "Unknown"
