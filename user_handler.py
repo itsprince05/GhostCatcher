@@ -422,7 +422,8 @@ class UserSession:
         try:
             # Ensure dialog with bot exists (Fix for 'Not Giving' issue)
             try:
-                await self.client.send_message(bot_username, "/start")
+                ping_msg = await self.client.send_message(bot_username, "/start")
+                await ping_msg.delete()
             except: pass
             
             # get_messages returns newest first. 
