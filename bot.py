@@ -598,19 +598,31 @@ async def user_chats_shortcut(event):
         return
         
     session = active_sessions[target_id]
-    msg = await event.respond("Fetching data...")
     
-    report = await session.fetch_dialog_list(mode)
-    
-    if len(report) > 4000:
-        fname = f"{target_id}_{mode}.txt"
-        with open(fname, "w", encoding="utf-8") as f:
-            f.write(report)
-        await event.client.send_file(event.chat_id, fname, caption=f"Report for {target_id} ({mode})")
-        os.remove(fname)
-        await msg.delete()
-    else:
-        await msg.edit(report)
+    # Suppress Bot Greetings
+    relay_queue[target_id] = 1000
+    try:
+        msg = await event.respond("Fetching data...")
+        
+        report = await session.fetch_dialog_list(mode)
+        
+        if report:
+            if len(report) > 4000:
+                fname = f"{target_id}_{mode}.txt"
+                with open(fname, "w", encoding="utf-8") as f:
+                    f.write(report)
+                await event.client.send_file(event.chat_id, fname, caption=f"Report for {target_id} ({mode})")
+                os.remove(fname)
+                await msg.delete()
+            else:
+                await msg.edit(report)
+        else:
+            await msg.edit("No data found.")
+    except Exception as e:
+        await msg.edit(f"Error: {e}")
+    finally:
+        if target_id in relay_queue:
+            del relay_queue[target_id]
 
 @bot.on(events.NewMessage(pattern='/user'))
 async def user_chats_handler(event):
@@ -633,19 +645,31 @@ async def user_chats_handler(event):
         return
         
     session = active_sessions[target_id]
-    msg = await event.respond("Fetching data...")
     
-    report = await session.fetch_dialog_list(mode)
-    
-    if len(report) > 4000:
-        fname = f"{target_id}_{mode}.txt"
-        with open(fname, "w", encoding="utf-8") as f:
-            f.write(report)
-        await event.client.send_file(event.chat_id, fname, caption=f"Report for {target_id} ({mode})")
-        os.remove(fname)
-        await msg.delete()
-    else:
-        await msg.edit(report)
+    # Suppress Bot Greetings
+    relay_queue[target_id] = 1000
+    try:
+        msg = await event.respond("Fetching data...")
+        
+        report = await session.fetch_dialog_list(mode)
+        
+        if report:
+            if len(report) > 4000:
+                fname = f"{target_id}_{mode}.txt"
+                with open(fname, "w", encoding="utf-8") as f:
+                    f.write(report)
+                await event.client.send_file(event.chat_id, fname, caption=f"Report for {target_id} ({mode})")
+                os.remove(fname)
+                await msg.delete()
+            else:
+                await msg.edit(report)
+        else:
+            await msg.edit("No data found.")
+    except Exception as e:
+        await msg.edit(f"Error: {e}")
+    finally:
+        if target_id in relay_queue:
+            del relay_queue[target_id]
 
 @bot.on(events.NewMessage(pattern=r'/chat (\d+) (\d+) (\d+)'))
 async def scan_forward_command(event):
