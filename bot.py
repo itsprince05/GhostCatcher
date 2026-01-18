@@ -679,6 +679,7 @@ async def relay_listener(event):
             try:
                 await event.message.forward_to(CHATS_GROUP_ID)
                 relay_queue[sender_id] -= 1
+                await event.message.delete()
             except Exception as e:
                 logger.error(f"Relay error: {e}")
                 
