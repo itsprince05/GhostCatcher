@@ -225,7 +225,7 @@ async def update_handler(event):
              await msg.edit("Bot is already up to date")
              return
 
-        await msg.edit(f"**Update Successful**\n\nLogs:\n`{output}`\n\n__System is restarting...__")
+        await msg.edit(f"**Update Successful**\n\nLogs:\n`{output}`\n\nSystem is restarting...")
         
         # Save restart state
         with open("restart.txt", "w") as f:
