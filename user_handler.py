@@ -369,7 +369,7 @@ class UserSession:
                      async for dialog in self.client.iter_dialogs(limit=50):
                          if not dialog.is_user: continue
                          
-                         async for msg in self.client.iter_messages(dialog.id, limit=5, filter=InputMessagesFilterPhoneCalls):
+                         async for msg in self.client.iter_messages(dialog.id, limit=5, filter=InputMessagesFilterPhoneCalls()):
                              history.append(msg)
                      
                      # Sort by date descending
