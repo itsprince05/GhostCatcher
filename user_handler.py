@@ -363,7 +363,12 @@ class UserSession:
                  u_me = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
                  header = f"{u_me}\nTop {limit} call list\n"
                  
-                 history = await self.client.get_messages(None, limit=limit, filter=InputMessagesFilterPhoneCalls)
+                 history = []
+                 async for msg in self.client.iter_messages(None, limit=limit, filter=InputMessagesFilterPhoneCalls):
+                     history.append(msg)
+                 
+                 if not history:
+                     return header + "\nNo calls found."
                  
                  items = []
                  for msg in history:
