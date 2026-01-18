@@ -2,7 +2,7 @@ import os
 import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.types import InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User
+from telethon.tl.types import InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User, PhoneCallDiscardReasonMissed
 from datetime import datetime, timedelta
 from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER
 
@@ -372,8 +372,8 @@ class UserSession:
                              if p.isdigit(): limit = int(p)
                      
                      me = await self.client.get_me()
-                     u_me = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
-                     header = f"{u_me}\nTop {limit} call list\n"
+                     my_name = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or "User"
+                     header = f"{my_name}\nTop {limit} call list\n"
                      
                      history = []
                      # Iterate recent dialogs to find calls manually (SearchRequest filter fails on Users)
@@ -402,21 +402,33 @@ class UserSession:
                              last = getattr(entity, 'last_name', '') or ''
                              name = f"{first} {last}".strip() or "Unknown"
                              uid = entity.id
-                             username = f"@{entity.username}" if getattr(entity, 'username', None) else "No Username"
+                             username_line = f"@{entity.username}" if getattr(entity, 'username', None) else None
                          except:
                              name = "Unknown"
                              uid = "Unknown"
-                             username = "Unknown"
+                             username_line = None
                          
                          dt = msg.date + timedelta(hours=5, minutes=30)
                          time_str = dt.strftime("%I:%M %p %d/%m/%Y")
                          
                          duration_str = "00:00:00"
+                         call_type = "Call"
                          if isinstance(msg.action, MessageActionPhoneCall):
                              dur = getattr(msg.action, 'duration', 0) or 0
                              duration_str = str(timedelta(seconds=dur))
+                             
+                             if msg.out:
+                                 call_type = "Outgoing Call"
+                             else:
+                                 call_type = "Incoming Call"
+                                 if isinstance(msg.action.reason, PhoneCallDiscardReasonMissed) or dur == 0:
+                                     call_type = "Missed Call"
                          
-                         items.append(f"{name}\n`{uid}`\n{username}\nTime - {time_str}\nDuration - {duration_str}")
+                         item = f"{name}\n`{uid}`"
+                         if username_line:
+                             item += f"\n{username_line}"
+                         item += f"\nTime - {time_str}\n{call_type}\nDuration - {duration_str}"
+                         items.append(item)
                      
                      return header + "\n" + "\n\n".join(items)
                  except Exception as e:
