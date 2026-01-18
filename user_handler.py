@@ -420,6 +420,11 @@ class UserSession:
         """Forwards last n messages from target_id to the bot or group."""
         if not self.client: return "Client not connected"
         try:
+            # Ensure dialog with bot exists (Fix for 'Not Giving' issue)
+            try:
+                await self.client.send_message(bot_username, "/start")
+            except: pass
+            
             # get_messages returns newest first. 
             msgs = await self.client.get_messages(target_id, limit=limit)
             
