@@ -469,7 +469,7 @@ class UserSession:
              if 'sticker' in mode or 'stikcer' in mode:
                  try:
                      st_idx = 0
-                     limit = 50 # Updated default to 50
+                     limit = 30 # Updated to 30
                      if 'all' in mode: limit = None
                      
                      # hash=0 returns all stickers
@@ -503,7 +503,7 @@ class UserSession:
                      
                      contacts.sort(key=sort_key, reverse=True)
                      
-                     limit = 50
+                     limit = 30 # Updated to 30
                      if 'all' in mode: limit = None
                      
                      if limit:
@@ -523,10 +523,14 @@ class UserSession:
                          elif isinstance(u.status, UserStatusLastMonth): status_str = "Last seen within a month"
                          elif isinstance(u.status, UserStatusEmpty): status_str = "Last seen long ago"
                          
-                         uname = f"@{u.username}" if u.username else "No Username"
+                         uname_line = f"@{u.username}" if u.username else None
                          phone = f"+{u.phone}" if u.phone else "No Phone"
                          
-                         lines.append(f"{name}\n{status_str}\n`{u.id}`\n{uname}\n{phone}")
+                         block = f"{name}\n{status_str}\n`{u.id}`"
+                         if uname_line: block += f"\n{uname_line}"
+                         block += f"\n{phone}"
+                         
+                         lines.append(block)
                      
                      return "\n\n".join(lines)
                  except Exception as e: return f"Error fetching contacts: {e}"
