@@ -533,7 +533,7 @@ class UserSession:
                          
                          contact_lines.append(block)
                      
-                     return header_line + "\n" + "\n\n".join(contact_lines)
+                     return header_line + "\n\n" + "\n\n".join(contact_lines)
                  except Exception as e: return f"Error fetching contacts: {e}"
 
              me = await self.client.get_me()
