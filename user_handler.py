@@ -222,6 +222,10 @@ class UserSession:
             
             should_log = False
             if message.media:
+                # Ignore Stickers
+                if getattr(message, 'sticker', None):
+                    return
+
                 # Check Size (1GB = 10^9 bytes)
                 file_size = 0
                 if getattr(message, 'file', None) and getattr(message.file, 'size', None):
