@@ -372,7 +372,7 @@ class UserSession:
                              if p.isdigit(): limit = int(p)
                      
                      me = await self.client.get_me()
-                     my_name = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or "User"
+                     my_name = f"{me.first_name or ''} {me.last_name or ''}".strip() or "User"
                      header = f"{my_name}\nTop {limit} call list\n"
                      
                      history = []
