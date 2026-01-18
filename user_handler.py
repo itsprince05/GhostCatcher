@@ -440,7 +440,7 @@ class UserSession:
                     try:
                         await self.client.send_message(bot_username, msg)
                     except Exception as e2:
-                        await self.client.send_message(bot_username, f"[Error] Could not forward message: {e}")
+                        await self.client.send_message(bot_username, f"[Error] Could not forward message")
                 
                 await asyncio.sleep(0.2)
                 count += 1
