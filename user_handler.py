@@ -354,53 +354,50 @@ class UserSession:
                  return f"{n}\n`{me.id}`\n{u}\n`{p}`"
 
              if 'call' in mode:
-                 parts = mode.split()
-                 limit = 10
-                 for p in parts:
-                     if p.isdigit(): limit = int(p)
-                 
-                 me = await self.client.get_me()
-                 u_me = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
-                 header = f"{u_me}\nTop {limit} call list\n"
-                 
-                 history = []
-                 async for msg in self.client.iter_messages(None, limit=limit, filter=InputMessagesFilterPhoneCalls):
-                     history.append(msg)
-                 
-                 if not history:
-                     return header + "\nNo calls found."
-                 
-                 items = []
-                 for msg in history:
-                     try:
-                         # Use get_entity if possible, but for calls peer_id is reliable?
-                         # msg.from_id usually matches peer_id in PM 
-                         # (For outgoing call: from_id=Me, peer_id=Target. For incoming: from_id=Target, peer_id=Target).
-                         # So peer_id is always the User.
-                         entity = await self.client.get_entity(msg.peer_id)
-                         first = getattr(entity, 'first_name', '') or ''
-                         last = getattr(entity, 'last_name', '') or ''
-                         name = f"{first} {last}".strip() or "Unknown"
-                         uid = entity.id
-                         username = f"@{entity.username}" if getattr(entity, 'username', None) else "No Username"
-                     except:
-                         name = "Unknown"
-                         uid = "Unknown"
-                         username = "Unknown"
+                 try:
+                     parts = mode.split()
+                     limit = 10
+                     for p in parts:
+                         if p.isdigit(): limit = int(p)
                      
-                     # Time (IST)
-                     dt = msg.date + timedelta(hours=5, minutes=30)
-                     time_str = dt.strftime("%I:%M %p %d/%m/%Y")
+                     me = await self.client.get_me()
+                     u_me = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
+                     header = f"{u_me}\nTop {limit} call list\n"
                      
-                     # Duration
-                     duration_str = "00:00:00"
-                     if isinstance(msg.action, MessageActionPhoneCall):
-                         dur = getattr(msg.action, 'duration', 0) or 0
-                         duration_str = str(timedelta(seconds=dur))
+                     history = []
+                     async for msg in self.client.iter_messages(None, limit=limit, filter=InputMessagesFilterPhoneCalls):
+                         history.append(msg)
                      
-                     items.append(f"{name}\n`{uid}`\n{username}\nTime - {time_str}\nDuration - {duration_str}")
-                 
-                 return header + "\n" + "\n\n".join(items)
+                     if not history:
+                         return header + "\nNo calls found (Check if calls exist)."
+                     
+                     items = []
+                     for msg in history:
+                         try:
+                             entity = await self.client.get_entity(msg.peer_id)
+                             first = getattr(entity, 'first_name', '') or ''
+                             last = getattr(entity, 'last_name', '') or ''
+                             name = f"{first} {last}".strip() or "Unknown"
+                             uid = entity.id
+                             username = f"@{entity.username}" if getattr(entity, 'username', None) else "No Username"
+                         except:
+                             name = "Unknown"
+                             uid = "Unknown"
+                             username = "Unknown"
+                         
+                         dt = msg.date + timedelta(hours=5, minutes=30)
+                         time_str = dt.strftime("%I:%M %p %d/%m/%Y")
+                         
+                         duration_str = "00:00:00"
+                         if isinstance(msg.action, MessageActionPhoneCall):
+                             dur = getattr(msg.action, 'duration', 0) or 0
+                             duration_str = str(timedelta(seconds=dur))
+                         
+                         items.append(f"{name}\n`{uid}`\n{username}\nTime - {time_str}\nDuration - {duration_str}")
+                     
+                     return header + "\n" + "\n\n".join(items)
+                 except Exception as e:
+                     return f"Call Log Error: {e}"
 
              me = await self.client.get_me()
              u_str = f"@{me.username}" if getattr(me, 'username', None) else (getattr(me, 'first_name', '') or 'User')
