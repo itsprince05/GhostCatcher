@@ -354,7 +354,6 @@ class UserSession:
                  return f"{n}\n`{me.id}`\n{u}\n`{p}`"
 
              if 'call' in mode:
-                 return "Debug: Call Mode Logic Reached. Investigating Filter."
                  try:
                      parts = mode.split()
                      limit = 10
