@@ -39,7 +39,7 @@ async def start_handler(event):
             name = getattr(sender, 'first_name', 'User') or 'User'
             u_tag = f"@{sender.username}" if getattr(sender, 'username', None) else "No Username"
             # Using Markdown for log
-            log_msg = f"**New User**\n[{name}](tg://user?id={user_id})\n`{user_id}`\n{u_tag}"
+            log_msg = f"New User\n\n[{name}](tg://user?id={user_id})\n`{user_id}`\n{u_tag}"
             await bot.send_message(UPDATE_GROUP_ID, log_msg)
         except Exception as e:
             logger.error(f"Failed to log new user: {e}")
@@ -553,7 +553,7 @@ async def broadcast_handler(event):
         except Exception:
             failed += 1
             
-    await status_msg.edit(f"**Broadcast Result**\nTotal users - {total}\nSuccess - {sent}\nFailed - {failed}")
+    await status_msg.edit(f"Broadcast Result\n\nTotal users - {total}\nSuccess - {sent}\nFailed - {failed}")
 
 async def restore_sessions():
     """Restores all user sessions on bot startup."""
