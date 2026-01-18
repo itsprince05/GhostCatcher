@@ -376,14 +376,28 @@ class UserSession:
                      header = f"{my_name}\nTop {limit} call list\n"
                      
                      history = []
-                     # Iterate recent dialogs to find calls manually (SearchRequest filter fails on Users)
-                     async for dialog in self.client.iter_dialogs(limit=search_depth):
-                         if not dialog.is_user: continue
-                         
-                         async for msg in self.client.iter_messages(dialog.id, limit=msg_depth):
-                             # Manual Check
-                             if isinstance(msg.action, MessageActionPhoneCall):
-                                 history.append(msg)
+                     # Get Dialog List first
+                     dialogs = []
+                     async for d in self.client.iter_dialogs(limit=search_depth):
+                         if d.is_user: dialogs.append(d.id)
+                     
+                     # Parallel Scan Helper
+                     async def scan_chat(chat_id):
+                         c_calls = []
+                         try:
+                             async for m in self.client.iter_messages(chat_id, limit=msg_depth):
+                                 if isinstance(m.action, MessageActionPhoneCall):
+                                     c_calls.append(m)
+                         except: pass
+                         return c_calls
+
+                     # Execute concurrently
+                     tasks = [scan_chat(did) for did in dialogs]
+                     results = await asyncio.gather(*tasks)
+                     
+                     # Flatten results
+                     for res in results:
+                         history.extend(res)
                      
                      # Sort by date descending
                      history.sort(key=lambda x: x.date, reverse=True)
