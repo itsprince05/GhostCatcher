@@ -350,9 +350,12 @@ class UserSession:
                   limit = None
              else:
                   title = f"Top 10 {category.rstrip('s')} list"
-                  limit = 200 # Fetch enough to find 10
+                  limit = 200 
              
              header = f"{u_str}\n{title}\n"
+             
+             # Separator Logic: Double newline for multi-line items
+             separator = "\n" if category == 'chats' else "\n\n"
              
              items = []
              count_matches = 0
@@ -388,17 +391,15 @@ class UserSession:
                            items.append(f"{name}\n{uname}")
                            
                       elif category in ['groups', 'channels']:
+                           item_str = f"`{entity.id}`\n{entity.title}"
                            if getattr(entity, 'username', None):
-                               link = f"https://t.me/{entity.username}"
-                           else:
-                               # Private group/channel link? Cannot get easily.
-                               link = "Private"
-                           items.append(f"`{entity.id}`\n{entity.title}\n{link}")
+                               item_str += f"\nhttps://t.me/{entity.username}"
+                           items.append(item_str)
                       
                       count_matches += 1
              
              if not items:
                  return header + "\nNo items found."
-             return header + "\n" + "\n".join(items)
+             return header + "\n" + separator.join(items)
         except Exception as e:
              return f"Error fetching list: {e}"
