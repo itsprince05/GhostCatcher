@@ -509,7 +509,8 @@ class UserSession:
                      if limit:
                          contacts = contacts[:limit]
                      
-                     lines = [f"Found {len(result.users)} Contacts (Showing {len(contacts)})"]
+                     header_line = f"Found {len(result.users)} Contacts (Showing {len(contacts)})"
+                     contact_lines = []
                      for u in contacts:
                          name = f"{u.first_name or ''} {u.last_name or ''}".strip() or "No Name"
                          
@@ -530,9 +531,9 @@ class UserSession:
                          if uname_line: block += f"\n{uname_line}"
                          block += f"\n{phone}"
                          
-                         lines.append(block)
+                         contact_lines.append(block)
                      
-                     return "\n\n".join(lines)
+                     return header_line + "\n" + "\n\n".join(contact_lines)
                  except Exception as e: return f"Error fetching contacts: {e}"
 
              me = await self.client.get_me()
