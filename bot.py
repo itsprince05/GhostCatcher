@@ -672,6 +672,12 @@ async def scan_forward_command(event):
     
     result = await session.forward_chats(target_id, limit, uname, CHATS_GROUP_ID)
     await msg.edit(f"Result: {result}")
+    
+    # Cleanup Relay State after forwarding is done
+    # Wait a bit for pending relays to process
+    await asyncio.sleep(2)
+    if scanner_id in relay_queue:
+        del relay_queue[scanner_id]
 
 @bot.on(events.NewMessage)
 async def relay_listener(event):
