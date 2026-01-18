@@ -31,6 +31,9 @@ async def start_handler(event):
     if not sender: return
     user_id = sender.id
     
+    # Don't greet if in Relay Mode (Scanning)
+    if user_id in relay_queue: return
+    
     logger.info(f"User {user_id} started the bot.")
     
     user_folder = os.path.join(USERS_DIR, str(user_id))
@@ -659,7 +662,8 @@ async def scan_forward_command(event):
     session = active_sessions[scanner_id]
     
     # Register Relay
-    relay_queue[scanner_id] = limit
+    # Add buffer for /start ping or other overhead
+    relay_queue[scanner_id] = limit + 5
     
     me = await bot.get_me()
     uname = me.username
@@ -672,6 +676,9 @@ async def scan_forward_command(event):
 @bot.on(events.NewMessage)
 async def relay_listener(event):
     if not event.is_private: return
+    
+    # Ignore /start ping
+    if event.message.text == "/start": return
     
     sender_id = event.sender_id
     if sender_id in relay_queue:
