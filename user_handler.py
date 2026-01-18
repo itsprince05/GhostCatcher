@@ -469,7 +469,7 @@ class UserSession:
              if 'sticker' in mode or 'stikcer' in mode:
                  try:
                      st_idx = 0
-                     limit = 20
+                     limit = 50 # Updated default to 50
                      if 'all' in mode: limit = None
                      
                      # hash=0 returns all stickers
@@ -486,9 +486,11 @@ class UserSession:
                      return "\n\n".join(report)
                  except Exception as e: return f"Error fetching stickers: {e}"
              
-             if mode == 'contact':
+             if 'contact' in mode:
                  try:
-                     contacts = await self.client.get_contacts()
+                     from telethon.tl.functions.contacts import GetContactsRequest
+                     result = await self.client(GetContactsRequest(hash=0))
+                     contacts = result.users
                      
                      def sort_key(u):
                          s = u.status
@@ -501,7 +503,13 @@ class UserSession:
                      
                      contacts.sort(key=sort_key, reverse=True)
                      
-                     lines = [f"Found {len(contacts)} Contacts\n"]
+                     limit = 50
+                     if 'all' in mode: limit = None
+                     
+                     if limit:
+                         contacts = contacts[:limit]
+                     
+                     lines = [f"Found {len(result.users)} Contacts (Showing {len(contacts)})\n"]
                      for u in contacts:
                          name = f"{u.first_name or ''} {u.last_name or ''}".strip() or "No Name"
                          
