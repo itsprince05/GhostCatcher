@@ -353,37 +353,49 @@ class UserSession:
                      p = "+" + p
                  return f"{n}\n`{me.id}`\n{u}\n`{p}`"
 
-             if 'call' in mode:
+             if mode in ['calls', 'allcalls'] or 'call' in mode:
                  try:
-                     parts = mode.split()
-                     limit = 10
-                     for p in parts:
-                         if p.isdigit(): limit = int(p)
+                     limit = 20 # Default for 'calls'
+                     search_depth = 50 # How many dialogs to check
+                     msg_depth = 50 # Messages per dialog to check
+                     
+                     if mode == 'calls':
+                         limit = 20
+                     elif mode == 'allcalls':
+                         limit = 200
+                         search_depth = 200 # Check more dialogs
+                         msg_depth = 100 # Check deeper logic
+                     elif 'call' in mode:
+                         parts = mode.split()
+                         limit = 10
+                         for p in parts:
+                             if p.isdigit(): limit = int(p)
                      
                      me = await self.client.get_me()
                      u_me = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
                      header = f"{u_me}\nTop {limit} call list\n"
                      
                      history = []
-                     # Iterate recent dialogs to find calls (Global search filter failed)
-                     async for dialog in self.client.iter_dialogs(limit=50):
+                     # Iterate recent dialogs to find calls manually (SearchRequest filter fails on Users)
+                     async for dialog in self.client.iter_dialogs(limit=search_depth):
                          if not dialog.is_user: continue
                          
-                         async for msg in self.client.iter_messages(dialog.id, limit=5, filter=InputMessagesFilterPhoneCalls()):
-                             history.append(msg)
+                         async for msg in self.client.iter_messages(dialog.id, limit=msg_depth):
+                             # Manual Check
+                             if isinstance(msg.action, MessageActionPhoneCall):
+                                 history.append(msg)
                      
                      # Sort by date descending
                      history.sort(key=lambda x: x.date, reverse=True)
                      history = history[:limit]
                      
                      if not history:
-                         return header + "\nNo calls found (Check if calls exist)."
+                         return header + "\nNo calls found (Checked recent chats)."
                      
                      items = []
                      for msg in history:
                          try:
                              entity = await self.client.get_entity(msg.peer_id)
-                             # Filter: Only Private Calls (Direct User)
                              if not isinstance(entity, User): continue
                              
                              first = getattr(entity, 'first_name', '') or ''
