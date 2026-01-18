@@ -342,9 +342,13 @@ class UserSession:
              # Handle 'number' mode
              if mode == 'number':
                  me = await self.client.get_me()
-                 n = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or "User"
-                 u = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
+                 first = getattr(me, 'first_name', '') or ''
+                 last = getattr(me, 'last_name', '') or ''
+                 n = f"{first} {last}".strip() or "User"
+                 u = f"@{me.username}" if getattr(me, 'username', None) else "No username"
                  p = getattr(me, 'phone', 'Unknown')
+                 if p and p != 'Unknown' and not p.startswith('+'):
+                     p = "+" + p
                  return f"{n}\n`{me.id}`\n{u}\n`{p}`"
 
              me = await self.client.get_me()
