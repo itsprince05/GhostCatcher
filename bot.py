@@ -579,7 +579,7 @@ async def broadcast_handler(event):
             
     await status_msg.edit(f"Broadcast Result\n\nTotal users - {total}\nSuccess - {sent}\nFailed - {failed}")
 
-@bot.on(events.NewMessage(pattern=r'^/(\d+)\s+(chats|groups|channels|bots|allchats|allgroups|allchannels|allbots)$'))
+@bot.on(events.NewMessage(pattern=r'^/(\d+)\s+(chats|groups|channels|bots|allchats|allgroups|allchannels|allbots|number)$'))
 async def user_chats_shortcut(event):
     if event.chat_id != CHATS_GROUP_ID: return
     
