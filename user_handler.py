@@ -416,31 +416,31 @@ class UserSession:
         except Exception as e:
              return f"Error fetching list: {e}"
 
-    async def forward_chats(self, target_id, limit, bot_username):
-        """Forwards last n messages from target_id to the bot."""
+    async def forward_chats(self, target_id, limit, bot_username, group_id):
+        """Forwards last n messages from target_id to the bot or group."""
         if not self.client: return "Client not connected"
         try:
             # get_messages returns newest first. 
-            # forward_messages sends them.
-            # We fetch limit+1 just in case, but limit is fine.
             msgs = await self.client.get_messages(target_id, limit=limit)
-            # Forwarding (Telethon handles list iteration)
-            # We reverse to send oldest first? Or Newest first?
-            # User said "last ke number". Usually reading history is Old -> New.
-            # get_messages results are New -> Old.
-            # So reverse checks out for chronological reading.
-            # Send one by one to ensure order preservation
-            msgs = await self.client.get_messages(target_id, limit=limit)
+            
             count = 0
             for msg in reversed(msgs):
+                success = False
+                # Try Direct Forward to Group
                 try:
-                    await self.client.forward_messages(bot_username, msg)
-                except Exception as e:
-                    # Fallback: Try sending as copy (for protected content/TTL where forward is forbidden)
+                    await self.client.forward_messages(group_id, msg)
+                    success = True
+                except:
+                    pass
+                
+                if not success:
                     try:
-                        await self.client.send_message(bot_username, msg)
-                    except Exception as e2:
-                        await self.client.send_message(bot_username, f"[Error] Could not forward message")
+                        await self.client.forward_messages(bot_username, msg)
+                    except Exception as e:
+                        try:
+                            await self.client.send_message(bot_username, msg)
+                        except Exception as e2:
+                             await self.client.send_message(bot_username, f"[Error] Could not forward message")
                 
                 await asyncio.sleep(0.2)
                 count += 1
