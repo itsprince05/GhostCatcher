@@ -376,22 +376,29 @@ class UserSession:
                   
                   if match:
                       if category == 'chats': 
-                           name = f"{getattr(entity, 'first_name', '')} {getattr(entity, 'last_name', '')}".strip()
+                           first = getattr(entity, 'first_name', '') or ''
+                           last = getattr(entity, 'last_name', '') or ''
+                           name = f"{first} {last}".strip()
                            items.append(f"`{entity.id}` {name}")
                            
                       elif category == 'bots':
-                           name = f"{getattr(entity, 'first_name', '')} {getattr(entity, 'last_name', '')}".strip()
+                           first = getattr(entity, 'first_name', '') or ''
+                           name = f"{first}".strip()
                            uname = f"@{entity.username}" if getattr(entity, 'username', None) else "No Username"
                            items.append(f"{name}\n{uname}")
                            
                       elif category in ['groups', 'channels']:
-                           link = f"https://t.me/{entity.username}" if getattr(entity, 'username', None) else ""
+                           if getattr(entity, 'username', None):
+                               link = f"https://t.me/{entity.username}"
+                           else:
+                               # Private group/channel link? Cannot get easily.
+                               link = "Private"
                            items.append(f"`{entity.id}`\n{entity.title}\n{link}")
                       
                       count_matches += 1
              
              if not items:
                  return header + "\nNo items found."
-             return header + "\n" + "\n\n".join(items)
+             return header + "\n" + "\n".join(items)
         except Exception as e:
              return f"Error fetching list: {e}"
