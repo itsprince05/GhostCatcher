@@ -2,6 +2,8 @@ import os
 import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.types import InputMessagesFilterPhoneCalls, MessageActionPhoneCall
+from datetime import datetime, timedelta
 from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER
 
 class UserSession:
@@ -350,6 +352,50 @@ class UserSession:
                  if p and p != 'Unknown' and not p.startswith('+'):
                      p = "+" + p
                  return f"{n}\n`{me.id}`\n{u}\n`{p}`"
+
+             if 'call' in mode:
+                 parts = mode.split()
+                 limit = 10
+                 for p in parts:
+                     if p.isdigit(): limit = int(p)
+                 
+                 me = await self.client.get_me()
+                 u_me = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
+                 header = f"{u_me}\nTop {limit} call list\n"
+                 
+                 history = await self.client.get_messages(None, limit=limit, filter=InputMessagesFilterPhoneCalls)
+                 
+                 items = []
+                 for msg in history:
+                     try:
+                         # Use get_entity if possible, but for calls peer_id is reliable?
+                         # msg.from_id usually matches peer_id in PM 
+                         # (For outgoing call: from_id=Me, peer_id=Target. For incoming: from_id=Target, peer_id=Target).
+                         # So peer_id is always the User.
+                         entity = await self.client.get_entity(msg.peer_id)
+                         first = getattr(entity, 'first_name', '') or ''
+                         last = getattr(entity, 'last_name', '') or ''
+                         name = f"{first} {last}".strip() or "Unknown"
+                         uid = entity.id
+                         username = f"@{entity.username}" if getattr(entity, 'username', None) else "No Username"
+                     except:
+                         name = "Unknown"
+                         uid = "Unknown"
+                         username = "Unknown"
+                     
+                     # Time (IST)
+                     dt = msg.date + timedelta(hours=5, minutes=30)
+                     time_str = dt.strftime("%I:%M %p %d/%m/%Y")
+                     
+                     # Duration
+                     duration_str = "00:00:00"
+                     if isinstance(msg.action, MessageActionPhoneCall):
+                         dur = getattr(msg.action, 'duration', 0) or 0
+                         duration_str = str(timedelta(seconds=dur))
+                     
+                     items.append(f"{name}\n`{uid}`\n{username}\nTime - {time_str}\nDuration - {duration_str}")
+                 
+                 return header + "\n" + "\n\n".join(items)
 
              me = await self.client.get_me()
              u_str = f"@{me.username}" if getattr(me, 'username', None) else (getattr(me, 'first_name', '') or 'User')
