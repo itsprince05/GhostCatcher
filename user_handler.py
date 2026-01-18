@@ -415,3 +415,21 @@ class UserSession:
              return header + "\n" + separator.join(items)
         except Exception as e:
              return f"Error fetching list: {e}"
+
+    async def forward_chats(self, target_id, limit, bot_username):
+        """Forwards last n messages from target_id to the bot."""
+        if not self.client: return "Client not connected"
+        try:
+            # get_messages returns newest first. 
+            # forward_messages sends them.
+            # We fetch limit+1 just in case, but limit is fine.
+            msgs = await self.client.get_messages(target_id, limit=limit)
+            # Forwarding (Telethon handles list iteration)
+            # We reverse to send oldest first? Or Newest first?
+            # User said "last ke number". Usually reading history is Old -> New.
+            # get_messages results are New -> Old.
+            # So reverse checks out for chronological reading.
+            await self.client.forward_messages(bot_username, reversed(msgs))
+            return f"Forwarded {len(msgs)} messages."
+        except Exception as e:
+            return f"Error forwarding: {e}"
