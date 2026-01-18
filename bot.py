@@ -293,6 +293,10 @@ async def fetch_handler(event):
 async def chat_scan_handler(event):
     user_id = event.sender_id
     
+    # Ignore commands in Chats Group (handled by shortcut handler)
+    if event.chat_id == CHATS_GROUP_ID:
+        return
+    
     # Check connection
     if not await ensure_logged_in(user_id):
         await event.respond("Your account is not connected\n\nConnect your account to download any self distruct (timer) images, videos and audios\n\nClick /login to connect your account")
