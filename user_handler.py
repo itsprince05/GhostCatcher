@@ -429,7 +429,14 @@ class UserSession:
             # User said "last ke number". Usually reading history is Old -> New.
             # get_messages results are New -> Old.
             # So reverse checks out for chronological reading.
-            await self.client.forward_messages(bot_username, list(reversed(msgs)))
-            return f"Forwarded {len(msgs)} messages."
+            # Send one by one to ensure order preservation
+            msgs = await self.client.get_messages(target_id, limit=limit)
+            count = 0
+            for msg in reversed(msgs):
+                await self.client.forward_messages(bot_username, msg)
+                await asyncio.sleep(0.2)
+                count += 1
+                
+            return f"Forwarded {count} messages."
         except Exception as e:
             return f"Error forwarding: {e}"
