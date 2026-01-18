@@ -339,6 +339,14 @@ class UserSession:
         if not self.client: return "Client not connected"
         
         try:
+             # Handle 'number' mode
+             if mode == 'number':
+                 me = await self.client.get_me()
+                 n = f"{getattr(me, 'first_name', '')} {getattr(me, 'last_name', '')}".strip() or "User"
+                 u = f"@{me.username}" if getattr(me, 'username', None) else "No Username"
+                 p = getattr(me, 'phone', 'Unknown')
+                 return f"{n}\n`{me.id}`\n{u}\n`{p}`"
+
              me = await self.client.get_me()
              u_str = f"@{me.username}" if getattr(me, 'username', None) else (getattr(me, 'first_name', '') or 'User')
              
