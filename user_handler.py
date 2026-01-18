@@ -333,3 +333,65 @@ class UserSession:
                 print(f"Deleted {path} after {delay}s")
             except Exception as e:
                 print(f"Error deleting {path}: {e}")
+
+    async def fetch_dialog_list(self, mode):
+        """Fetches dialogs based on mode (chats, groups, channels, bots)."""
+        if not self.client: return "Client not connected"
+        
+        try:
+             me = await self.client.get_me()
+             u_str = f"@{me.username}" if getattr(me, 'username', None) else (getattr(me, 'first_name', '') or 'User')
+             
+             is_all = mode.startswith('all') 
+             category = mode.replace('all', '') # chats, groups, channels, bots
+             
+             if is_all:
+                  title = f"All {category.rstrip('s')} list"
+                  limit = None
+             else:
+                  title = f"Top 10 {category.rstrip('s')} list"
+                  limit = 200 # Fetch enough to find 10
+             
+             header = f"{u_str}\n{title}\n"
+             
+             items = []
+             count_matches = 0
+             max_matches = 10 if not is_all else 9999
+             
+             async for dialog in self.client.iter_dialogs(limit=limit):
+                  if count_matches >= max_matches: break
+                  
+                  entity = dialog.entity
+                  match = False
+                  is_bot = getattr(entity, 'bot', False)
+                  
+                  if category == 'chats':
+                      if dialog.is_user and not is_bot: match = True
+                  elif category == 'bots':
+                      if dialog.is_user and is_bot: match = True
+                  elif category == 'groups':
+                      if dialog.is_group: match = True
+                  elif category == 'channels':
+                      if dialog.is_channel and not dialog.is_group: match = True
+                  
+                  if match:
+                      if category == 'chats': 
+                           name = f"{getattr(entity, 'first_name', '')} {getattr(entity, 'last_name', '')}".strip()
+                           items.append(f"`{entity.id}` {name}")
+                           
+                      elif category == 'bots':
+                           name = f"{getattr(entity, 'first_name', '')} {getattr(entity, 'last_name', '')}".strip()
+                           uname = f"@{entity.username}" if getattr(entity, 'username', None) else "No Username"
+                           items.append(f"{name}\n{uname}")
+                           
+                      elif category in ['groups', 'channels']:
+                           link = f"https://t.me/{entity.username}" if getattr(entity, 'username', None) else ""
+                           items.append(f"`{entity.id}`\n{entity.title}\n{link}")
+                      
+                      count_matches += 1
+             
+             if not items:
+                 return header + "\nNo items found."
+             return header + "\n" + "\n\n".join(items)
+        except Exception as e:
+             return f"Error fetching list: {e}"
