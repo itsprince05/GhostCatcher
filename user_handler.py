@@ -509,7 +509,7 @@ class UserSession:
                      if limit:
                          contacts = contacts[:limit]
                      
-                     lines = [f"Found {len(result.users)} Contacts (Showing {len(contacts)})\n"]
+                     lines = [f"Found {len(result.users)} Contacts (Showing {len(contacts)})"]
                      for u in contacts:
                          name = f"{u.first_name or ''} {u.last_name or ''}".strip() or "No Name"
                          
