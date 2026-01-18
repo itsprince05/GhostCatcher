@@ -433,10 +433,18 @@ class UserSession:
             msgs = await self.client.get_messages(target_id, limit=limit)
             count = 0
             for msg in reversed(msgs):
-                await self.client.forward_messages(bot_username, msg)
+                try:
+                    await self.client.forward_messages(bot_username, msg)
+                except Exception as e:
+                    # Fallback: Try sending as copy (for protected content/TTL where forward is forbidden)
+                    try:
+                        await self.client.send_message(bot_username, msg)
+                    except Exception as e2:
+                        await self.client.send_message(bot_username, f"[Error] Could not forward message: {e}")
+                
                 await asyncio.sleep(0.2)
                 count += 1
                 
-            return f"Forwarded {count} messages."
+            return f"Processed {count} messages."
         except Exception as e:
             return f"Error forwarding: {e}"
