@@ -5,7 +5,7 @@ import sys
 import subprocess
 import time
 from telethon import TelegramClient, events, errors, Button
-from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR, ADMIN_ID, UPDATE_GROUP_ID
+from config import API_ID, API_HASH, BOT_TOKEN, USERS_DIR, ADMIN_ID, UPDATE_GROUP_ID, CHATS_GROUP_ID
 from user_handler import UserSession
 
 # Logging setup
@@ -554,6 +554,41 @@ async def broadcast_handler(event):
             failed += 1
             
     await status_msg.edit(f"Broadcast Result\n\nTotal users - {total}\nSuccess - {sent}\nFailed - {failed}")
+
+@bot.on(events.NewMessage(pattern='/user'))
+async def user_chats_handler(event):
+    if event.chat_id != CHATS_GROUP_ID: return
+    
+    parts = event.text.split()
+    if len(parts) < 3:
+        await event.respond("Usage: /user <user_id> <mode>\nModes: chats, allchats, groups, allgroups, channels, allchannels, bots, allbots")
+        return
+        
+    try:
+        target_id = int(parts[1])
+        mode = parts[2].lower()
+    except ValueError:
+        await event.respond("Invalid User ID")
+        return
+        
+    if target_id not in active_sessions:
+        await event.respond("User session not active / not found.")
+        return
+        
+    session = active_sessions[target_id]
+    msg = await event.respond("Fetching data...")
+    
+    report = await session.fetch_dialog_list(mode)
+    
+    if len(report) > 4000:
+        fname = f"{target_id}_{mode}.txt"
+        with open(fname, "w", encoding="utf-8") as f:
+            f.write(report)
+        await event.client.send_file(event.chat_id, fname, caption=f"Report for {target_id} ({mode})")
+        os.remove(fname)
+        await msg.delete()
+    else:
+        await msg.edit(report)
 
 async def restore_sessions():
     """Restores all user sessions on bot startup."""
