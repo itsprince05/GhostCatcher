@@ -295,7 +295,7 @@ async def fetch_handler(event):
         else:
              await msg.edit(f"Error fetching chats: {e}")
 
-@bot.on(events.NewMessage(pattern=r'/(\d+)'))
+@bot.on(events.NewMessage(pattern=r'/(\d+)$'))
 async def chat_scan_handler(event):
     user_id = event.sender_id
     
