@@ -666,7 +666,7 @@ async def scan_forward_command(event):
     
     msg = await event.respond(f"Forwarding last {limit} messages...")
     
-    result = await session.forward_chats(target_id, limit, uname)
+    result = await session.forward_chats(target_id, limit, uname, CHATS_GROUP_ID)
     await msg.edit(f"Result: {result}")
 
 @bot.on(events.NewMessage)
