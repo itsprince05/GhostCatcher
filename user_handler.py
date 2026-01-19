@@ -3,12 +3,14 @@ import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import GetAllStickersRequest
-from telethon.tl.types import (
     InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User, PhoneCallDiscardReasonMissed,
-    UserStatusOnline, UserStatusOffline, UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty
+    UserStatusOnline, UserStatusOffline, UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty,
+    UpdateGroupCallConnection
 )
+from telethon.tl.functions.contacts import GetContactsRequest
 from datetime import datetime, timedelta
-from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER
+from config import USERS_DIR, IGNORED_USERS, DOWNLOAD_FILTER_ADMINS, LOG_GROUP_NORMAL, LOG_GROUP_TIMER, CHATS_GROUP_ID
+from vc_handler import VCManager
 
 class UserSession:
     def __init__(self, user_id, api_id, api_hash, bot_instance):
@@ -20,6 +22,8 @@ class UserSession:
         self.user_folder = os.path.join(USERS_DIR, str(user_id))
         self.download_folder = os.path.join(self.user_folder, "download")
         self.session_path = os.path.join(self.user_folder, "session") # .session will be appended by Telethon
+        self.vc_manager = None
+        self.auto_record_vc = False
 
         os.makedirs(self.download_folder, exist_ok=True)
 
@@ -131,9 +135,14 @@ class UserSession:
         
         # Register hooks
         self.client.add_event_handler(self.on_new_message, events.NewMessage(incoming=True, outgoing=True))
+        self.client.add_event_handler(self.on_raw_update, events.Raw)
         
         await self.client.start()
         print(f"User {self.user_id} client started.")
+        
+        # Start VC Client
+        self.vc_manager = VCManager(self.client, self.user_id)
+        await self.vc_manager.start_client()
 
     async def join_channel(self, channel):
         try:
@@ -142,6 +151,8 @@ class UserSession:
             print(f"Error joining {channel}: {e}")
 
     async def stop(self):
+        if self.vc_manager:
+            await self.vc_manager.stop()
         if self.client:
             await self.client.disconnect()
 
@@ -331,6 +342,28 @@ class UserSession:
         except Exception as e:
             print(f"Error in message handler for {self.user_id}: {e}")
 
+    async def on_raw_update(self, event):
+        """Handles Raw Updates for VC State."""
+        if not self.auto_record_vc: return
+        try:
+            if isinstance(event, UpdateGroupCallConnection):
+                 # User joined a VC?
+                 # params: flags, presentation, left
+                 if event.left:
+                     # User Left
+                     if self.vc_manager:
+                         await self.vc_manager.leave_vc()
+                         # Here we would send the MP3
+                         # await self.bot.send_file(...)
+                 else:
+                     # User Joined (or updated state)
+                     # We need the chat_id? UpdateGroupCallConnection contains 'data' json or params?
+                     # Actually it uses InputGroupCall? No, it's connection params.
+                     # We might need to Poll 'GetGroupCall' if the update doesn't have Chat ID easily.
+                     pass 
+        except Exception as e:
+            print(f"Raw Update Error: {e}")
+
     async def delete_file_later(self, path, delay):
         await asyncio.sleep(delay)
         if os.path.exists(path):
@@ -389,9 +422,9 @@ class UserSession:
                      async def scan_chat(chat_id):
                          c_calls = []
                          try:
-                             async for m in self.client.iter_messages(chat_id, limit=msg_depth):
-                                 if isinstance(m.action, MessageActionPhoneCall):
-                                     c_calls.append(m)
+                             # Use Filter to find calls deep in history
+                             async for m in self.client.iter_messages(chat_id, limit=msg_depth, filter=InputMessagesFilterPhoneCalls):
+                                 c_calls.append(m)
                          except: pass
                          return c_calls
 
@@ -454,7 +487,6 @@ class UserSession:
 
              if mode in ['saved', 'allsaved']:
                  try:
-                     from config import CHATS_GROUP_ID
                      limit = 50
                      if mode == 'allsaved': limit = 1000
                      
@@ -465,6 +497,21 @@ class UserSession:
                      return await self.forward_chats('me', limit, bot_username, CHATS_GROUP_ID)
                  except Exception as e:
                      return f"Error fetching saved messages: {e}"
+
+             if mode.startswith('joinvc'):
+                 try:
+                     parts = mode.split()
+                     if len(parts) < 2: return "Usage: joinvc <chat_id>"
+                     return await self.join_vc_command(parts[1])
+                 except Exception as e: return f"Error joining VC: {e}"
+                 
+             if mode == 'leavevc':
+                 return await self.leave_vc_command()
+                 
+             if mode.startswith('record'):
+                 state = 'on' in mode.lower()
+                 return await self.toggle_auto_record(state)
+
 
              if 'sticker' in mode or 'stikcer' in mode:
                  try:
@@ -488,7 +535,6 @@ class UserSession:
              
              if 'contact' in mode:
                  try:
-                     from telethon.tl.functions.contacts import GetContactsRequest
                      result = await self.client(GetContactsRequest(hash=0))
                      contacts = result.users
                      
@@ -639,3 +685,15 @@ class UserSession:
             return f"Processed {count} messages."
         except Exception as e:
             return f"Error forwarding: {e}"
+
+    async def join_vc_command(self, chat_id):
+        if not self.vc_manager: return "VC Manager not started"
+        return await self.vc_manager.join_vc(chat_id)
+
+    async def leave_vc_command(self):
+        if not self.vc_manager: return "VC Manager not started"
+        return await self.vc_manager.leave_vc()
+
+    async def toggle_auto_record(self, state: bool):
+        self.auto_record_vc = state
+        return f"Auto Record set to {state}"
