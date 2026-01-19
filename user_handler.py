@@ -3,6 +3,7 @@ import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import GetAllStickersRequest
+from telethon.tl.types import (
     InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User, PhoneCallDiscardReasonMissed,
     UserStatusOnline, UserStatusOffline, UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty
 )
