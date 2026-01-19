@@ -390,9 +390,10 @@ class UserSession:
                      async def scan_chat(chat_id):
                          c_calls = []
                          try:
-                             # Use filter to get Calls explicitly, ignoring text depth
-                             async for m in self.client.iter_messages(chat_id, limit=10, filter=InputMessagesFilterPhoneCalls):
-                                 c_calls.append(m)
+                             # Brute force scan recent 500 messages (Reliable)
+                             async for m in self.client.iter_messages(chat_id, limit=500):
+                                 if isinstance(m.action, MessageActionPhoneCall):
+                                     c_calls.append(m)
                          except: pass
                          return c_calls
 
