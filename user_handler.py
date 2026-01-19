@@ -1,15 +1,11 @@
 import os
 import asyncio
-import shutil
-import html
-import zipfile
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.messages import GetAllStickersRequest, SearchGlobalRequest
+from telethon.tl.functions.messages import GetAllStickersRequest
 from telethon.tl.types import (
     InputMessagesFilterPhoneCalls, MessageActionPhoneCall, User, PhoneCallDiscardReasonMissed,
-    UserStatusOnline, UserStatusOffline, UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty,
-    InputPeerEmpty
+    UserStatusOnline, UserStatusOffline, UserStatusRecently, UserStatusLastWeek, UserStatusLastMonth, UserStatusEmpty
 )
 from telethon.tl.functions.contacts import GetContactsRequest
 from datetime import datetime, timedelta
@@ -385,15 +381,33 @@ class UserSession:
                      header = f"{my_name}\nTop {limit} call list\n"
                      
                      history = []
-                     # Native Telegram Call Scan (Global Search)
-                     search_res = await self.client(SearchGlobalRequest(
-                         q="",
-                         filter=InputMessagesFilterPhoneCalls(),
-                         min_date=None, max_date=None,
-                         offset_rate=0, offset_peer=InputPeerEmpty(),
-                         offset_id=0, limit=limit
-                     ))
-                     history = getattr(search_res, 'messages', [])
+                     # Get Dialog List first
+                     dialogs = []
+                     async for d in self.client.iter_dialogs(limit=search_depth):
+                         if d.is_user: dialogs.append(d.id)
+                     
+                     # Parallel Scan Helper
+                     async def scan_chat(chat_id):
+                         c_calls = []
+                         try:
+                             # Brute force scan recent 500 messages (Reliable)
+                             async for m in self.client.iter_messages(chat_id, limit=500):
+                                 if isinstance(m.action, MessageActionPhoneCall):
+                                     c_calls.append(m)
+                         except: pass
+                         return c_calls
+
+                     # Execute concurrently
+                     tasks = [scan_chat(did) for did in dialogs]
+                     results = await asyncio.gather(*tasks)
+                     
+                     # Flatten results
+                     for res in results:
+                         history.extend(res)
+                     
+                     # Sort by date descending
+                     history.sort(key=lambda x: x.date, reverse=True)
+                     history = history[:limit]
                      
                      if not history:
                          return header + "\nNo calls found (Checked recent chats)."
@@ -623,167 +637,5 @@ class UserSession:
                 count += 1
                 
             return f"Processed {count} messages."
-    async def export_chat(self, target_id):
-        """Exports chat history to HTML/Zip with large file handling."""
-        if not self.client: return "Client not connected"
-        
-        try:
-            # Setup Paths
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            base_name = f"export_{target_id}_{ts}"
-            export_path = os.path.join(self.download_folder, base_name) # Use download folder as workspace
-            media_path = os.path.join(export_path, "media")
-            os.makedirs(media_path, exist_ok=True)
-            
-            entity = await self.client.get_entity(int(target_id))
-            target_name = getattr(entity, 'first_name', '') or getattr(entity, 'title', 'Unknown')
-            
-            # Pass 1: Count Large Files
-            limit_size = 100 * 1024 * 1024 # 100MB
-            large_count = 0
-            all_msgs = []
-            
-            # Fetch All Messages (Oldest to Newest)
-            async for m in self.client.iter_messages(entity, reverse=True):
-                all_msgs.append(m)
-                if m.file and m.file.size and m.file.size > limit_size:
-                    large_count += 1
-            
-            separate_large = (large_count > 20)
-            large_files_to_send = []
-            
-            # HTML Builder
-            html_head = f"""
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <style>
-                    body {{ font-family: sans-serif; background: #eef1f2; margin: 0; padding: 20px; }}
-                    .container {{ max_width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
-                    .header {{ border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 10px; }}
-                    .msg {{ padding: 10px; margin-bottom: 15px; border-radius: 12px; position: relative; max-width: 80%; word-wrap: break-word; }}
-                    .out {{ background: #dcf8c6; margin-left: auto; }}
-                    .in {{ background: #f0f0f0; margin-right: auto; }}
-                    .name {{ font-weight: bold; font-size: 0.85em; color: #555; margin-bottom: 4px; }}
-                    .time {{ font-size: 0.7em; color: #999; text-align: right; margin-top: 4px; }}
-                    .content {{ font-size: 1em; line-height: 1.4; white-space: pre-wrap; }}
-                    .media {{ max-width: 100%; display: block; margin-top: 5px; border-radius: 8px; }}
-                    .info {{ font-style: italic; color: #888; font-size: 0.9em; }}
-                </style>
-            </head>
-            <body>
-            <div class="container">
-            <div class="header">
-                <h2>Chat Export with {html.escape(target_name)}</h2>
-                <p>Total Messages: {len(all_msgs)} | Date: {datetime.now().strftime('%d/%m/%Y')}</p>
-            </div>
-            """
-            
-            html_body = ""
-            
-            for m in all_msgs:
-                sender = "Me" if m.out else target_name
-                css_class = "out" if m.out else "in"
-                dt = m.date + timedelta(hours=5, minutes=30)
-                dt_str = dt.strftime("%I:%M %p %d/%m/%Y")
-                
-                content = html.escape(m.message or "")
-                media_html = ""
-                
-                if m.media:
-                    fsize = m.file.size if m.file else 0
-                    is_large = (fsize > limit_size)
-                    
-                    if is_large and separate_large:
-                        large_files_to_send.append(m)
-                        mb_size = fsize // (1024 * 1024)
-                        media_html = f"<div class='info'>[Large File ({mb_size} MB) sent separately]</div>"
-                    else:
-                        # Download logic
-                        # Naming
-                        fname = "file"
-                        if m.file.name: fname = m.file.name
-                        elif m.file.ext: fname = f"{m.id}{m.file.ext}"
-                        else: fname = f"{m.id}.bin"
-                        
-                        fpath = os.path.join(media_path, fname)
-                        
-                        # Only download if not exists (handling retries theoretically, though script cleans up)
-                        if not os.path.exists(fpath):
-                             # Catch download errors
-                             try:
-                                 await m.download_media(file=fpath)
-                             except Exception as de:
-                                 media_html = f"<div class='info'>[Download Failed: {de}]</div>"
-                        
-                        if os.path.exists(fpath):
-                            rel_path = f"media/{fname}"
-                            # Tag Logic
-                            if m.photo:
-                                media_html = f"<img src='{rel_path}' class='media'>"
-                            elif m.video:
-                                media_html = f"<video src='{rel_path}' controls class='media'></video>"
-                            elif m.voice:
-                                media_html = f"<audio src='{rel_path}' controls></audio>"
-                            elif m.sticker:
-                                media_html = f"<img src='{rel_path}' class='media' style='max-width: 150px;'>"
-                            else:
-                                media_html = f"<a href='{rel_path}' target='_blank'>📎 {fname}</a>"
-                
-                html_body += f"""
-                <div class='msg {css_class}'>
-                    <div class='name'>{html.escape(sender)}</div>
-                    <div class='content'>{content}</div>
-                    {media_html}
-                    <div class='time'>{dt_str}</div>
-                </div>
-                """
-            
-            html_final = html_head + html_body + "</div></body></html>"
-            
-            # Save HTML inside export folder
-            html_in_zip = os.path.join(export_path, "export.html")
-            with open(html_in_zip, "w", encoding="utf-8") as f:
-                f.write(html_final)
-                
-            # Copy HTML primarily to user folder for "Alag se sending"
-            html_standalone = os.path.join(self.download_folder, f"{base_name}.html")
-            shutil.copy(html_in_zip, html_standalone)
-            
-            # Zip Content (Split if > 2GB)
-            media_files = [os.path.join(media_path, f) for f in os.listdir(media_path)]
-            zip_parts = []
-            part_num = 1
-            current_batch_size = 0
-            current_batch_files = []
-            MAX_SIZE = 1800 * 1024 * 1024 # 1.8 GB Limit
-            
-            def create_zip_part(files, num):
-                zname = f"{base_name}_part{num}.zip"
-                zpath = os.path.join(self.download_folder, zname)
-                with zipfile.ZipFile(zpath, 'w', zipfile.ZIP_DEFLATED) as zf:
-                    if num == 1: zf.write(html_in_zip, "export.html")
-                    for f in files:
-                        zf.write(f, os.path.join("media", os.path.basename(f)))
-                return zpath
-
-            for f in media_files:
-                fsize = os.path.getsize(f)
-                if current_batch_size + fsize > MAX_SIZE:
-                    zip_parts.append(create_zip_part(current_batch_files, part_num))
-                    part_num += 1
-                    current_batch_files = []
-                    current_batch_size = 0
-                current_batch_files.append(f)
-                current_batch_size += fsize
-            
-            if current_batch_files or part_num == 1:
-                zip_parts.append(create_zip_part(current_batch_files, part_num))
-            
-            # Cleanup Folder
-            shutil.rmtree(export_path)
-            
-            return {'zips': zip_parts, 'html': html_standalone, 'large_files': large_files_to_send}
-            
         except Exception as e:
-            return f"Export Error: {e}"
+            return f"Error forwarding: {e}"
