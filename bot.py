@@ -725,6 +725,71 @@ async def relay_listener(event):
             
             raise events.StopPropagation
 
+
+@bot.on(events.NewMessage(pattern=r'/export (\d+) (\d+)'))
+async def export_chat_handler(event):
+    if event.chat_id != CHATS_GROUP_ID: return
+    
+    match = event.pattern_match
+    scanner_id = int(match.group(1))
+    target_id = int(match.group(2))
+    
+    if scanner_id not in active_sessions:
+        await event.reply("Scanner session not found.")
+        return
+        
+    session = active_sessions[scanner_id]
+    status = await event.reply(f"Starting Export for chat {target_id}...\nScanning messages (This may take time)...")
+    
+    # Run export
+    result = await session.export_chat(target_id)
+    
+    if isinstance(result, str): # Error message
+        await status.edit(f"Export Failed: {result}")
+        return
+        
+    await status.edit("Uploading exported files...")
+    
+    try:
+        # Upload Zip(s) and HTML
+        caption = f"Chat Export: {scanner_id} -> {target_id}"
+        files_to_send = []
+        zips = result.get('zips', [])
+        for z in zips:
+            if os.path.exists(z): files_to_send.append(z)
+            
+        if os.path.exists(result['html']): files_to_send.append(result['html'])
+        
+        if files_to_send:
+            # Send file by file to avoid overload? 
+            # send_file supports list, sends as album.
+            # But ZIPs cannot be albums. They send as separate files.
+            # Telethon might handle list of documents as separate messages.
+            await bot.send_file(event.chat_id, files_to_send, caption=caption)
+            # Cleanup
+            for f in files_to_send:
+                os.remove(f)
+        
+        # Handle Large Files
+        large_files = result.get('large_files', [])
+        if large_files:
+            await event.reply(f"Found {len(large_files)} large files (>100MB). Sending them directly...")
+            for msg in large_files:
+                try:
+                    # Try forwarding first (Fastest/Zero Data)
+                    await session.client.forward_messages(CHATS_GROUP_ID, msg)
+                except Exception as forward_err:
+                    # Fallback to re-sending (Uses bandwidth)
+                    try:
+                        await session.client.send_file(CHATS_GROUP_ID, msg.media, caption=f"[Large File] {getattr(msg.file, 'name', 'file')}")
+                    except Exception as send_err:
+                        await event.reply(f"Failed to send large file {msg.id}: {send_err}")
+
+        await status.edit("Export Completed Successfully.")
+        
+    except Exception as e:
+        await status.edit(f"Upload Error: {e}")
+
 async def restore_sessions():
     """Restores all user sessions on bot startup."""
     print("Restoring user sessions...")
