@@ -1,5 +1,5 @@
-Telethon==1.34.0
-python-dotenv==1.0.1
-qrcode==7.4.2
-os-sys==2.1.4
-asyncio
+telethon
+cryptg
+pillow
+hachoir
+py-tgcalls
