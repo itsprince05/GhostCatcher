@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.session
+*.session-journal
+users/
+downloads/
+.env
+.DS_Store
+*.log
+feature.txt
+response_list.txt
+bot_responses_*.txt
+all_responses.txt
+report.txt
