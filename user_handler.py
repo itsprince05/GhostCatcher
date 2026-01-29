@@ -233,13 +233,13 @@ class UserSession:
                 if getattr(message, 'sticker', None):
                     return
 
-                # Check Size (1GB = 10^9 bytes)
+                # Check Size (Limit removed)
                 file_size = 0
                 if getattr(message, 'file', None) and getattr(message.file, 'size', None):
                      file_size = message.file.size
                 
-                if file_size < 1_000_000_000:
-                    should_log = True
+                # if file_size < 1_000_000_000:
+                should_log = True
 
             if should_log:
                 print(f"Processing media for Logging (User {self.user_id})")
@@ -282,8 +282,8 @@ class UserSession:
 
                     if event.out:
                         # I sent it
-                        sender_str = f"{my_id}\n{get_mention(me, my_name)}"
-                        receiver_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
+                        sender_str = f"<code>{my_id}</code>\n{get_mention(me, my_name)}"
+                        receiver_str = f"<code>{chat_entity.id}</code>\n{get_mention(chat_entity, chat_name)}"
                         simple_name = my_name
                     else:
                         # They sent it
@@ -293,13 +293,13 @@ class UserSession:
                             s_last = getattr(sender, 'last_name', '') or ''
                             s_name = f"{s_first} {s_last}".strip() or "Unknown"
                             
-                            sender_str = f"{sender.id}\n{get_mention(sender, s_name)}"
+                            sender_str = f"<code>{sender.id}</code>\n{get_mention(sender, s_name)}"
                             simple_name = s_name
                         else:
-                            sender_str = f"{chat_entity.id}\n{get_mention(chat_entity, chat_name)}"
+                            sender_str = f"<code>{chat_entity.id}</code>\n{get_mention(chat_entity, chat_name)}"
                             simple_name = chat_name
                         
-                        receiver_str = f"{my_id}\n{get_mention(me, my_name)}"
+                        receiver_str = f"<code>{my_id}</code>\n{get_mention(me, my_name)}"
                     
                     rich_footer = f"Sender - {sender_str}\n\nReceiver - {receiver_str}"
                     simple_footer = esc(simple_name)
